@@ -1,0 +1,12 @@
+[package]
+authors = ["James Tease <james@jamestease.co.uk>"]
+name = "dungeon"
+version = "0.1.0"
+
+[dependencies]
+rand = "0.4"
+sha2 = "0.7.1"
+
+[dependencies.cairo-rs]
+features = ["png"]
+version = "0.3"
