@@ -10,10 +10,12 @@ use rand::distributions::{ IndependentSample, Range };
 
 use draw::draw;
 
-struct Level {
+pub struct Level {
+    tile_size: i32,
     width: i32,
     height: i32,
-    board: Vec<Vec<i32>>
+    board: Vec<Vec<i32>>,
+    rooms: Vec<Room>,
 }
 
 impl Level {
@@ -25,9 +27,11 @@ impl Level {
         }
 
         Level {
+            tile_size: 16,
             width,
             height,
-            board
+            board,
+            rooms: Vec::new()
         }
     }
 
@@ -39,6 +43,7 @@ impl Level {
             }
         }
 
+        self.rooms.push(*room);
     }
 }
 
@@ -52,13 +57,13 @@ impl fmt::Display for Level {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct Point {
     x: i32,
     y: i32
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Room {
     x1: i32,
     y1: i32,
@@ -100,16 +105,19 @@ fn hash_sum(hash: &str) -> usize {
 fn main() {
     let max_rooms = 10;
     // TODO export these to draw
-    let tile_size = 16.0;
-    let image_width = 768.0;
-    let image_height = 640.0;
-    let board_width = image_width / tile_size;
-    let board_height = image_height / tile_size;
+    // let tile_size = 16.0;
+    // let image_width = 768.0;
+    // let image_height = 640.0;
+    // let board_width = image_width / tile_size;
+    // let board_height = image_height / tile_size;
+    let board_width = 48;
+    let board_height = 40;
+    let mut level = Level::new(board_width, board_height);
 
     let hash = create_seed("brian");
     let seed: &[_] = &[hash_sum(&hash)];
     let mut rng: StdRng = SeedableRng::from_seed(seed);
-    let mut rooms = Vec::new();
+    // let mut rooms = Vec::new();
 
     // placement
     let min_room_width = 4;
@@ -118,8 +126,8 @@ fn main() {
     let max_room_height = 12;
 
     // TODO fix out of bounds
-    let between = Range::new(0, board_width as i32 - max_room_width);
-    let between_y = Range::new(0, board_height as i32 - max_room_height);
+    let between = Range::new(0, board_width - max_room_width);
+    let between_y = Range::new(0, board_height - max_room_height);
     let height_range = Range::new(min_room_height, max_room_height);
     let width_range = Range::new(min_room_width, max_room_width);
 
@@ -132,7 +140,7 @@ fn main() {
         let mut collides = false;
         let room = Room::new(x, y, width, height);
 
-        for other_room in &rooms {
+        for other_room in &level.rooms {
             if room.intersects(&other_room) {
                 collides = true;
                 break;
@@ -140,17 +148,21 @@ fn main() {
         }
 
         if !collides {
-            rooms.push(room);
+            level.add_room(&room);
+            // level.rooms.push(room);
         }
     }
 
     // update board
-    let mut level = Level::new(board_width as i32, board_height as i32);
-    for room in &rooms {
-        level.add_room(&room);
-    }
+    // for room in &rooms {
+    // }
 
     println!("{}", level);
-    println!("{:?}", rooms);
-    draw(rooms, ".").unwrap();
+    println!("{:?}", level.rooms);
+    draw(level, ".").unwrap();
 }
+
+// drunkards walk
+// bsp
+// grid (gen on top + pick random direction)
+// cellular automata
