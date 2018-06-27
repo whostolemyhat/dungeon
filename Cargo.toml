@@ -4,7 +4,8 @@ name = "dungeon"
 version = "0.1.0"
 
 [dependencies]
-rand = "0.4"
+arrayref = "0.3.4"
+rand = "0.5"
 sha2 = "0.7.1"
 
 [dependencies.cairo-rs]

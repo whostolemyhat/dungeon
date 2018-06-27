@@ -1,15 +1,28 @@
-use rand::{ StdRng };
-use rand::distributions::{ IndependentSample, Range };
-
+use rand::{ Rng, StdRng };
 use std::fmt;
 use room::Room;
+
+#[derive(Clone)]
+pub enum Tile {
+    Empty,
+    Walkable
+}
+
+impl fmt::Display for Tile {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Tile::Empty => write!(f, "0"),
+            Tile::Walkable => write!(f, "1")
+        }
+    }
+}
 
 pub struct Level {
     pub hash: String,
     pub tile_size: i32,
     pub width: i32,
     pub height: i32,
-    pub board: Vec<i32>,
+    pub board: Vec<Tile>,
     pub rooms: Vec<Room>,
 }
 
@@ -19,7 +32,7 @@ impl Level {
             tile_size: 16,
             width,
             height,
-            board: vec![0; (height * width) as usize],
+            board: vec![Tile::Empty; (height * width) as usize],
             rooms: Vec::new(),
             hash: hash.clone()
         }
@@ -37,7 +50,7 @@ impl Level {
                 let x = room.x1 + col;
                 let coord = self.get_tile_coords(x, y);
 
-                self.board[coord] = 1;
+                self.board[coord] = Tile::Walkable;
             }
         }
 
@@ -47,18 +60,18 @@ impl Level {
     fn horz_corridor(&mut self, start_x: i32, end_x: i32, y: i32) {
         for col in start_x..end_x {
             let pos = self.get_tile_coords(col, y);
-            self.board[pos] = 1;
+            self.board[pos] = Tile::Walkable;
         }
     }
 
     fn vert_corridor(&mut self, start_y: i32, end_y: i32, x: i32) {
         for row in start_y..end_y {
             let pos = self.get_tile_coords(x, row);
-            self.board[pos] = 1;
+            self.board[pos] = Tile::Walkable;
         }
     }
 
-    pub fn place_rooms(&mut self, mut rng: StdRng) {
+    pub fn place_rooms(&mut self, rng: &mut StdRng) {
         let max_rooms = 10;
 
         let min_room_width = 4;
@@ -67,16 +80,11 @@ impl Level {
         let max_room_height = 12;
 
         // TODO fix out of bounds
-        let between = Range::new(0, self.width - max_room_width);
-        let between_y = Range::new(0, self.height - max_room_height);
-        let height_range = Range::new(min_room_height, max_room_height);
-        let width_range = Range::new(min_room_width, max_room_width);
-
         for _ in 0..max_rooms {
-            let x = between.ind_sample(&mut rng);
-            let y = between_y.ind_sample(&mut rng);
-            let width = width_range.ind_sample(&mut rng);
-            let height = height_range.ind_sample(&mut rng);
+            let x = rng.gen_range(0, self.width - max_room_width);
+            let y = rng.gen_range(0, self.height - max_room_height);
+            let width = rng.gen_range(min_room_width, max_room_width);
+            let height = rng.gen_range(min_room_height, max_room_height);
 
             let mut collides = false;
             let room = Room::new(x, y, width, height);
@@ -94,14 +102,14 @@ impl Level {
         }
     }
 
-    pub fn place_corridors(&mut self, mut rng: StdRng) {
+    pub fn place_corridors(&mut self, rng: &mut StdRng) {
         // TODO check bounds/len
         for i in 0..(self.rooms.len() - 1) {
             let room = self.rooms[i];
             let other = self.rooms[i + 1];
 
             // randomly pick vert or horz
-            match Range::new(0, 2).ind_sample(&mut rng) {
+            match rng.gen_range(0, 2) {
                 0 => {
                     match room.centre.x < other.centre.x {
                         true => self.horz_corridor(room.centre.x, other.centre.x, room.centre.y),
@@ -134,7 +142,7 @@ impl fmt::Display for Level {
             if i > 0 && i % self.width as usize == 0 {
                 write!(f, "\n")?;
             }
-            write!(f, " {:?} ", row)?;
+            write!(f, " {} ", row)?;
         }
 
         Ok(())

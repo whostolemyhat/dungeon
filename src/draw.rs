@@ -1,6 +1,6 @@
 extern crate cairo;
 
-use super::{ Level };
+use level::{ Level, Tile };
 use std::fs::File;
 use self::cairo::{ Context, Format, ImageSurface };
 
@@ -31,7 +31,7 @@ fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64) {
     context.fill();
 }
 
-fn draw_tiles(context: &Context, board: Vec<i32>, scale: f64, width: i32) {
+fn draw_tiles(context: &Context, board: Vec<Tile>, scale: f64, width: i32) {
     let mut col = 0;
     let mut row = 0;
 
@@ -42,8 +42,9 @@ fn draw_tiles(context: &Context, board: Vec<i32>, scale: f64, width: i32) {
             row = row + 1;
         }
 
-        if tile == 1 {
-            draw_tile(context, col as f64 * scale, row as f64 * scale, col as f64 * scale + scale, row as f64 * scale + scale);
+        match tile {
+            Tile::Walkable => draw_tile(context, col as f64 * scale, row as f64 * scale, col as f64 * scale + scale, row as f64 * scale + scale),
+            _ => ()
         }
     }
 }

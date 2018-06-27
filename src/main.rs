@@ -1,37 +1,35 @@
 extern crate rand;
 extern crate sha2;
+#[macro_use]
+extern crate arrayref;
 
 pub mod draw;
 mod level;
 mod room;
 
 use sha2::{ Sha256, Digest };
-use rand::{ SeedableRng, StdRng };
+use rand::prelude::*;
 
 use draw::draw;
 use level::Level;
 
-fn create_seed(text: &str) -> String {
+fn create_hash(text: &str) -> String {
     let mut hasher = Sha256::default();
     hasher.input(text.as_bytes());
     format!("{:x}", hasher.result())
 }
 
-fn hash_sum(hash: &str) -> usize {
-    hash.as_bytes().into_iter().fold(0, |acc, byte| acc + *byte as usize)
-}
-
 fn main() {
     let board_width = 48;
     let board_height = 40;
-    let hash = create_seed("brian");
+    let hash = create_hash("ohdearmanuelneuer");
+
     let mut level = Level::new(board_width, board_height, &hash);
+    let seed = array_ref!(hash.as_bytes(), 0, 32);
+    let mut rng: StdRng = SeedableRng::from_seed(*seed);
 
-    let seed: &[_] = &[hash_sum(&hash)];
-    let rng: StdRng = SeedableRng::from_seed(seed);
-
-    level.place_rooms(rng);
-    level.place_corridors(rng);
+    level.place_rooms(&mut rng);
+    level.place_corridors(&mut rng);
 
     println!("{}", level);
     draw(level, ".").unwrap();
