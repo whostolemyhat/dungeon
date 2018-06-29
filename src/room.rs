@@ -17,9 +17,6 @@ pub struct Room {
 
 impl Room {
     pub fn new(x: i32, y: i32, width: i32, height: i32) -> Self {
-        println!("{:?}", width as f64 / 2.0);
-        println!("floor {:?}", (width as f64 / 2.0).floor());
-        println!("round {:?}", (width as f64 / 2.0).round());
         Room {
             x1: x,
             x2: x + width,
@@ -28,8 +25,8 @@ impl Room {
             width,
             height,
             centre: Point{
-                x: x + (width as f64 / 2.0).floor() as i32,
-                y: y + (height as f64 / 2.0).floor() as i32
+                x: x + width / 2 as i32,
+                y: y + height / 2 as i32
             }
         }
     }
