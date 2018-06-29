@@ -2,6 +2,10 @@ extern crate rand;
 extern crate sha2;
 #[macro_use]
 extern crate arrayref;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
 
 pub mod draw;
 mod level;
@@ -32,7 +36,10 @@ fn main() {
     level.place_corridors(&mut rng);
 
     println!("{}", level);
-    draw(level, ".").unwrap();
+
+    let serialised = serde_json::to_string(&level).unwrap();
+    println!("{:?}", serialised);
+    draw(&level, ".").unwrap();
 }
 
 // drunkards walk

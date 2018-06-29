@@ -1,4 +1,5 @@
 use rand::{ Rng, StdRng };
+use serde::{ Serialize, Serializer };
 use std::fmt;
 use room::Room;
 
@@ -17,6 +18,16 @@ impl fmt::Display for Tile {
     }
 }
 
+impl Serialize for Tile {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        match self {
+            Tile::Empty => serializer.serialize_i32(0),
+            Tile::Walkable => serializer.serialize_i32(1)
+        }
+    }
+}
+
+#[derive(Serialize)]
 pub struct Level {
     pub hash: String,
     pub tile_size: i32,
@@ -46,8 +57,8 @@ impl Level {
         // TODO check bounds
         for row in 0..room.height {
             for col in 0..room.width {
-                let y = room.y1 + row;
-                let x = room.x1 + col;
+                let y = room.y + row;
+                let x = room.x + col;
                 let coord = self.get_tile_coords(x, y);
 
                 self.board[coord] = Tile::Walkable;
