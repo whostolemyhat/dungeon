@@ -46,20 +46,12 @@ fn main() {
                         .short("s")
                         .long("seed")
                         .takes_value(true)
-                        .help("An existing seed"))
+                        .help("An existing seed. Must be 32 characters"))
                     .get_matches();
-
-    // let text = matches.value_of("text").unwrap_or(thread_rng().sample_iter(&Alphanumeric).take(32).collect::<String>().as_str());
-    // let hash = create_hash(&text);
-    // let hash = match matches.value_of("text") {
-    //     Some(text) => create_hash(&text),
-    //     None => create_hash(&thread_rng().sample_iter(&Alphanumeric).take(32).collect::<String>())
-    // };
 
     let board_width = 48;
     let board_height = 40;
 
-    // let seed = array_ref!(hash.as_bytes(), 0, 32);
     let seed: String = match matches.value_of("seed") {
         Some(text) => text.to_string(),
         None => {
@@ -70,6 +62,7 @@ fn main() {
         }
     };
 
+    // TODO check length of seed
     let seed_u8 = array_ref!(seed.as_bytes(), 0, 32);
     let mut rng: StdRng = SeedableRng::from_seed(*seed_u8);
     let mut level = Level::new(board_width, board_height, &seed);
