@@ -5,6 +5,7 @@ version = "0.1.0"
 
 [dependencies]
 arrayref = "0.3.4"
+clap = "2.32.0"
 rand = "0.5"
 serde = "1.0.68"
 serde_derive = "1.0.68"
