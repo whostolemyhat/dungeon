@@ -53,7 +53,12 @@ fn main() {
     let board_height = 40;
 
     let seed: String = match matches.value_of("seed") {
-        Some(text) => text.to_string(),
+        Some(text) => {
+            if text.chars().count() < 32 {
+                panic!("Seed must be 32 characters long. Use -t option to create a new seed.")
+            }
+            text.to_string()
+        },
         None => {
             match matches.value_of("text") {
                Some(text) => create_hash(&text),
@@ -62,7 +67,6 @@ fn main() {
         }
     };
 
-    // TODO check length of seed
     let seed_u8 = array_ref!(seed.as_bytes(), 0, 32);
     let mut rng: StdRng = SeedableRng::from_seed(*seed_u8);
     let mut level = Level::new(board_width, board_height, &seed);
@@ -70,11 +74,12 @@ fn main() {
     level.place_rooms(&mut rng);
     level.place_corridors(&mut rng);
 
-    println!("{}", level);
+    // println!("{}", level);
 
     let serialised = serde_json::to_string(&level).unwrap();
-    println!("{:?}", serialised);
-    draw(&level, ".").unwrap();
+    println!("{}", &level.hash);
+    println!("{}", serialised);
+    draw(&level, "./img").unwrap();
 }
 
 // drunkards walk

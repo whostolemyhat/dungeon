@@ -167,3 +167,21 @@ impl fmt::Display for Level {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use level::Tile;
+    use serde_json;
+
+    #[test]
+    fn test_tile_display() {
+        assert_eq!(format!("{}", Tile::Empty), " ");
+        assert_eq!(format!("{}", Tile::Walkable), "1");
+    }
+
+    #[test]
+    fn test_tile_serialise() {
+        assert_eq!(serde_json::to_string(&Tile::Empty).unwrap(), "0");
+        assert_eq!(serde_json::to_string(&Tile::Walkable).unwrap(), "1");
+    }
+}
