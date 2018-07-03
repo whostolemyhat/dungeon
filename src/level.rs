@@ -2,6 +2,7 @@ use rand::{ Rng, StdRng };
 use serde::{ Serialize, Serializer };
 use std::fmt;
 use room::Room;
+use draw::draw;
 
 #[derive(Clone)]
 pub enum Tile {
@@ -91,7 +92,7 @@ impl Level {
         let max_room_height = 12;
 
         // TODO fix out of bounds
-        for _ in 0..max_rooms {
+        for i in 0..max_rooms {
             let mut x = rng.gen_range(0, self.width);
             let mut y = rng.gen_range(0, self.height);
             let width = rng.gen_range(min_room_width, max_room_width);
@@ -118,6 +119,8 @@ impl Level {
             if !collides {
                 self.add_room(&room);
             }
+
+            draw(&self, "./img", format!("room-{}", i).as_str()).unwrap();
         }
     }
 
@@ -150,6 +153,8 @@ impl Level {
                     }
                 }
             }
+
+            draw(&self, "./img", format!("corridor-{}", i).as_str()).unwrap();
         }
     }
 }

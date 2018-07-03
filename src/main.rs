@@ -74,12 +74,12 @@ fn main() {
     level.place_rooms(&mut rng);
     level.place_corridors(&mut rng);
 
-    // println!("{}", level);
+    println!("{}", level);
 
-    let serialised = serde_json::to_string(&level).unwrap();
-    println!("{}", &level.hash);
-    println!("{}", serialised);
-    draw(&level, "./img").unwrap();
+    // let serialised = serde_json::to_string(&level).unwrap();
+    // println!("{}", &level.hash);
+    // println!("{}", serialised);
+    draw(&level, "./img", format!("final-{}", &level.hash).as_str()).unwrap();
 }
 
 // drunkards walk

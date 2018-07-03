@@ -4,9 +4,14 @@
 Procedural generation is a technique which allows content to be created programmatically, rather than everything in a game being specifically placed by a designer. Procedural generation doesn't mean randomised, rather that
 
 - what is this article about
-This tutorial will show how to create a tilemap-based level with rooms connected by straight corridors, using [Rust](https://www.rust-lang.org/en-US/). We'll also cover how to use seeds to reproduce specific layouts.
+This tutorial will show how to create a tilemap-based level with rooms connected by straight corridors, using [Rust](https://www.rust-lang.org/en-US/). We'll also cover how to use seeds to reproduce specific layouts and serialise the output into JSON.
 
-- pic of output
+<video controls>
+    <source src="./levelgen.mp4" type="video/mp4">
+</video>
+
+Here's an image of a layout created from this article:
+![](manuelneuersweeperkeeper.png)
 
 ## Setup
 You'll need to [install Rust](https://www.rust-lang.org/en-US/) - this tutorial uses version `1.27.0`. Once installed, create a binary project with Cargo:
@@ -1204,9 +1209,197 @@ cargo run manuelneuersweeperkeeper
 
 If you just run `cargo run` then a random string is created and used instead, and you get a different map every time. However, if you like one of the maps it creates, there's no way to re-use the seed because firstly, we don't know what the random seed was, and secondly, there's no way to pass a seed without it being hashed.
 
+### Save hash
+Let's update the Level struct so we can keep track of the seed used to create the level - that way, when we print the serialised JSON, we can easily retrieve the seed so we can re-create a level.
+
+In `level.rs` we need to add a property to store the hash, then update the `new` function and pass the hash in where we create the level in `main.rs`.
+
+```
+// level.rs
+...
+#[derive(Serialize)]
+pub struct Level {
+    width: i32,
+    height: i32,
+    board: Vec<Vec<Tile>>,
+    rooms: Vec<Room>,
+    hash: String
+}
+
+impl Level {
+    pub fn new(width: i32, height: i32, hash: &String) -> Self {
+        let mut board = Vec::new();
+        for _ in 0..height {
+            let row = vec![Tile::Empty; width as usize];
+            board.push(row);
+        }
+
+        Level {
+            width,
+            height,
+            board,
+            rooms: Vec::new(),
+            hash: hash.clone()
+        }
+    }
+
+...
+```
+
+```
+// main.rs
+
+...
+fn main() {
+    let hash = match std::env::args().nth(1) {
+        Some(text) => create_hash(&text),
+        None => create_hash(&thread_rng().sample_iter(&Alphanumeric).take(32).collect::<String>())
+    };
+
+    let seed = array_ref!(hash.as_bytes(), 0, 32);
+    let mut rng: StdRng = SeedableRng::from_seed(*seed);
+
+    let mut level = Level::new(48, 40, &hash);
+    level.place_rooms(&mut rng);
+    level.place_corridors(&mut rng);
+    println!("{}", level);
+
+    let serialised = serde_json::to_string(&level).unwrap();
+    println!("{:?}", serialised);
+}
+```
+
+Now when we run the project, the level prints out the hash used to create the level:
+
+```
+{
+    "width":48,
+    "height":40,
+    "board":[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    "rooms":[
+        {"x":35,"y":25,"x2":42,"y2":32,"width":7,"height":7,"centre":{"x":38,"y":28}},
+        {"x":32,"y":13,"x2":38,"y2":20,"width":6,"height":7,"centre":{"x":35,"y":16}},
+        {"x":1,"y":21,"x2":7,"y2":29,"width":6,"height":8,"centre":{"x":4,"y":25}},
+        {"x":15,"y":1,"x2":22,"y2":10,"width":7,"height":9,"centre":{"x":18,"y":5}},
+        {"x":14,"y":15,"x2":20,"y2":25,"width":6,"height":10,"centre":{"x":17,"y":20}}
+    ],
+    "hash":"e8edd254c4ffece9f4937b4f1bae4ef6aec4124f86eee0c09428afac036cef47"
+}
+```
+
+However, we still don't have a way to pass a seed we already have in to our programme, such as when we use a randomised string. Rather than use positional arguments - so assuming the first argument is going to be a string to hash - let's use a crate to parse command line arguments.
+
+### Parse arguments with Clap
+
+[Clap](https://github.com/kbknapp/clap-rs) is a handy crate which handles reading and parsing arguments to your programme. Add `clap = "2.32.0"` to `Cargo.toml`:
+
+```
+# Cargo.toml
+...
+[dependencies]
+arrayref = "0.3.4"
+clap = "2.32.0"
+rand = "0.5"
+sha2 = "0.7.1"
+serde = "1.0.68"
+serde_derive = "1.0.68"
+serde_json = "1.0.22"
+```
+
+then update `main.rs` to handle arguments:
+
+```
+// main.rs
+extern crate clap;
+
+use clap::{ App, Arg };
+
+...
+
+fn main() {
+    // set up Clap
+    let matches = App::new("Dungeon")
+                    .version("1.0")
+                    .author("James Baum <@whostolemyhat>")
+                    .arg(Arg::with_name("text")
+                        .short("t")
+                        .long("text")
+                        .takes_value(true)
+                        .help("A string to hash and use as a seed"))
+                    .arg(Arg::with_name("seed")
+                        .short("s")
+                        .long("seed")
+                        .takes_value(true)
+                        .help("An existing seed. Must be 32 characters"))
+                    .get_matches();
+
+    // see if we've been passed a seed (-s parameter)
+    let seed: String = match matches.value_of("seed") {
+        Some(text) => {
+
+            // if we have been passed a seed, check that it's valid
+            if text.chars().count() < 32 {
+
+                // if it's too short, print a message and end the programme
+                panic!("Seed must be 32 characters long. Use -t option to create a new seed.")
+            }
+
+            // if it's ok, set the value to `seed`
+            text.to_string()
+        },
+
+        // if we didn't get passed a seed, check to see if we had text (-t)
+        None => {
+            match matches.value_of("text") {
+
+               // if it was provided, set it to `seed`
+               Some(text) => create_hash(&text),
+
+               // if nothing was provided, create a random string
+               None => create_hash(&thread_rng().sample_iter(&Alphanumeric).take(32).collect::<String>())
+           }
+        }
+    };
+
+    // once we have `seed`, which is either a valid existing seed or some text,
+    // we need to convert it to [u8] as before
+    let seed_u8 = array_ref!(seed.as_bytes(), 0, 32); // Note this is now `seed_u8`
+
+    // seed the random number generator
+    let mut rng: StdRng = SeedableRng::from_seed(*seed_u8); // As is this
+
+    // then create a level as before
+    let mut level = Level::new(48, 40, &seed); // save `seed`
+    level.place_rooms(&mut rng);
+    level.place_corridors(&mut rng);
+
+    let serialised = serde_json::to_string(&level).unwrap();
+    println!("{}", serialised);
+}
+```
+
+Compile and run the project with `cargo run` - you should see the level created with a random seed (eg `8c8f397f8ce594a8669617c6ab347f5778b973d33df2977d1334803de715f753`). You can now use that seed and pass it to your programme to re-create the level with the `-s` flag:
+`cargo run -- -s 8c8f397f8ce594a8669617c6ab347f5778b973d33df2977d1334803de715f753`, and you should see the same level.
+
+If you want to pass text as before, then use the `-t` flag: `cargo run -- -t manuelneuersweeperkeeper`.
+
+Note the double dash in the run command (`--`) - this is only used when running with Cargo, otherwise your arguments would be passed to Cargo and not your programme. When using the compiled output, you don't need the extra dashes: `levelgen -s 8c8f397f8ce594a8669617c6ab347f5778b973d33df2977d1334803de715f753`.
+
+With Clap, you could also set up other parameters to be read in, such as the board size or number of rooms. These parameters would have to be the same every time if you wanted to re-create a level.
+
+## The end
+That's it!
+
+
+## example
 ## tests
 ## PNG/cairo - trait
 ## Web service
 ## Wasm
 
+## video
+ffmpeg -framerate 10 -i img/%02d.png -pix_fmt yuv420p output.mp4
 
+-pix_fmt yuv420p is for quicktime compat
+add draw calls through level gen
+rename images to 01.png etc
