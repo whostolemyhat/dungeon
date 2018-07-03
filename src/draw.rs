@@ -5,7 +5,7 @@ use std::fs::File;
 use self::cairo::{ Context, Format, ImageSurface };
 
 fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64) {
-    context.set_source_rgb(1.0, 0.4, 0.2);
+    context.set_source_rgb(0.258, 0.525, 0.956);
     context.new_path();
     context.move_to(x as f64, y as f64);
     context.line_to(x2 as f64, y as f64);

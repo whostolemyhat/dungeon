@@ -120,7 +120,7 @@ impl Level {
                 self.add_room(&room);
             }
 
-            draw(&self, "./img", format!("room-{}", i).as_str()).unwrap();
+            draw(&self, "./img", format!("0{}", i + 1).as_str()).unwrap();
         }
     }
 
@@ -154,7 +154,7 @@ impl Level {
                 }
             }
 
-            draw(&self, "./img", format!("corridor-{}", i).as_str()).unwrap();
+            draw(&self, "./img", format!("{}", i + 11).as_str()).unwrap();
         }
     }
 }

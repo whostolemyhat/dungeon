@@ -79,7 +79,7 @@ fn main() {
     // let serialised = serde_json::to_string(&level).unwrap();
     // println!("{}", &level.hash);
     // println!("{}", serialised);
-    draw(&level, "./img", format!("final-{}", &level.hash).as_str()).unwrap();
+    draw(&level, "./img", "17").unwrap();
 }
 
 // drunkards walk
