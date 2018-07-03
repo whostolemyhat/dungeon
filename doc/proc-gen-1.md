@@ -1,16 +1,14 @@
 # Procedural level generation with Rust
 
-- what is procgen
-Procedural generation is a technique which allows content to be created programmatically, rather than everything in a game being specifically placed by a designer. Procedural generation doesn't mean randomised, rather that
+Procedural generation is a technique which allows content to be created programmatically, rather than everything in a game being specifically placed by a designer. Procedural generation doesn't mean completely randomised, rather randomised elements are used as long as they make sense.
 
-- what is this article about
-This tutorial will show how to create a tilemap-based level with rooms connected by straight corridors, using [Rust](https://www.rust-lang.org/en-US/). We'll also cover how to use seeds to reproduce specific layouts and serialise the output into JSON.
+This tutorial will show how to create a tilemap-based level with rooms connected by straight corridors, using [Rust](https://www.rust-lang.org/en-US/). We'll also cover how to use seeds to reproduce specific layouts and serialise the output into JSON. The rooms will be placed at random within the level, and corridors are drawn horizontally and vertically to connect the centres of the rooms.
 
+Here's an example level created:
 <video controls>
     <source src="./levelgen.mp4" type="video/mp4">
 </video>
 
-Here's an image of a layout created from this article:
 ![](manuelneuersweeperkeeper.png)
 
 ## Setup
@@ -567,7 +565,7 @@ pub fn place_rooms(&mut self, rng: &mut StdRng) {
 Run the project again - `cargo run` - Cargo will download the crates then compile the project. You should now see the same map every time you run the project - try changing the hash string for different maps.
 
 ### Full listing
-####main.rs
+#### main.rs
 ```
 extern crate rand;
 extern crate sha2;
@@ -597,7 +595,7 @@ fn main() {
     println!("{}", level);
 }
 ```
-####level.rs
+#### level.rs
 ```
 use std::fmt;
 use rand::prelude::*;
@@ -691,7 +689,7 @@ impl fmt::Display for Level {
     }
 }
 ```
-####room.rs
+#### room.rs
 ```
 #[derive(Clone, Copy)]
 pub struct Room {
@@ -981,6 +979,8 @@ Running the project again should now give you a map with several rooms connected
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 ```
+
+![](manuelneuersweeperkeeper.png)
 
 ## JSON
 We can print the map out in the console, but it's not much use there. We can convert the level into JSON so it can be exported and used in a game using `serde`.
@@ -1388,7 +1388,11 @@ Note the double dash in the run command (`--`) - this is only used when running 
 With Clap, you could also set up other parameters to be read in, such as the board size or number of rooms. These parameters would have to be the same every time if you wanted to re-create a level.
 
 ## The end
-That's it!
+That's it! There are a few things you could play around with, such as the size or number of rooms in a level, or whether to use certain types of corridors. In the next part, we'll cover using the JSON output to draw the maps, and also look at different algorithms to place and join rooms.
+
+<video controls>
+    <source src="./manuelneuersweeperkeeper.mp4" type="video/mp4">
+</video>
 
 
 ## example

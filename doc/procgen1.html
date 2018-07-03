@@ -1,0 +1,1177 @@
+<h1 id="procedural-level-generation-with-rust">Procedural level generation with Rust</h1>
+<ul>
+<li><p>what is procgen<br>Procedural generation is a technique which allows content to be created programmatically, rather than everything in a game being specifically placed by a designer. Procedural generation doesn&#39;t mean randomised, rather that</p>
+</li>
+<li><p>what is this article about<br>This tutorial will show how to create a tilemap-based level with rooms connected by straight corridors, using <a href="https://www.rust-lang.org/en-US/">Rust</a>. We&#39;ll also cover how to use seeds to reproduce specific layouts and serialise the output into JSON.</p>
+</li>
+</ul>
+
+<video controls>
+    <source src="./levelgen.mp4" type="video/mp4">
+</video>
+
+</p>
+<p>Here&#39;s an image of a layout created from this article:<br><img src="manuelneuersweeperkeeper.png" alt=""></p>
+<h2 id="setup">Setup</h2>
+<p>You&#39;ll need to <a href="https://www.rust-lang.org/en-US/">install Rust</a> - this tutorial uses version <code>1.27.0</code>. Once installed, create a binary project with Cargo:</p>
+<p><code>cargo new dungeon --bin</code></p>
+<p>Once created, change into the new folder and run the project to check everything&#39;s ok:</p>
+<pre><code>cd dungeon
+cargo run
+
+// =&gt; &quot;Hello world!&quot;
+</code></pre><p>After compiling, the project should print out &quot;Hello world!&quot; - this is the default boilerplate for projects set up with Cargo.</p>
+<h2 id="create-the-board">Create the board</h2>
+<p>The first step is to create the tilemap which will keep track of empty space and rooms in our level. In <code>src/main.rs</code> we&#39;ll create a struct to hold this data:</p>
+<pre><code>// main.rs
+
+#[derive(Debug)]
+struct Level {
+    width: i32,
+    height: i32,
+    board: Vec&lt;Vec&lt;i32&gt;&gt;
+}
+
+impl Level {
+    fn new(width: i32, height: i32) -&gt; Self {
+        let mut board = Vec::new();
+        for _ in 0..height {
+            let row = vec![0; width as usize];
+            board.push(row);
+        }
+
+        Level {
+            width,
+            height,
+            board
+        }
+    }
+}
+
+fn main() {
+    println!(&quot;Hello, world!&quot;);
+    let level = Level::new(10, 8);
+    println!(&quot;{:?}&quot;, level);
+}
+</code></pre><p>When run, this will give you the &quot;Hello world!&quot; phrase, followed by the level, which at the moment is just loads and loads of zeros:</p>
+<pre><code>Hello, world!
+Level { width: 10, height: 8, board: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]] }
+</code></pre><p>The <code>Level</code> struct is pretty basic for now:</p>
+<pre><code>#[derive(Debug)]
+struct Level {
+    width: i32,
+    height: i32,
+    board: Vec&lt;Vec&lt;i32&gt;&gt;
+}
+</code></pre><p>It contains width and height values, which mark the size of the level. Our example is 10 tiles wide and 8 tiles high - if each tile is 16 pixels, this would make the map dimensions 768x600 pixels.</p>
+<p>We&#39;re using a two-dimensional array (ie an array containing arrays) to represent the map (<code>board</code> in the struct). Zero means an empty space, so when we initialise the map everything is empty; rooms and corridors will use ones when we add them. Each array inside <code>board</code> represents a row, and each entry in that array represents a position in that row. For instance, the co-ordinate (8, 6) would be <code>board[6][8]</code> in our struct - the <code>y</code> co-ordinate (6) becomes the first slice parameter to get the row array, then we use the <code>x</code> co-ordinate (8) to get the appropriate item.</p>
+<p>You can also use a single-dimension array as the board - there are no nested arrays, so you can directly access each position on the board. This is faster than using a two-dimensional array, but comes at the cost of being slightly less clear, so we&#39;ll use the two-dimensional array for now.</p>
+<p>We&#39;ve also added a <code>new</code> function to the <code>Level</code> struct:</p>
+<pre><code>impl Level {
+    fn new(width: i32, height: i32) -&gt; Self {
+        let mut board = Vec::new();
+        for _ in 0..height {
+            let row = vec![0; width as usize];
+            board.push(row);
+        }
+
+        Level {
+            width,
+            height,
+            board
+        }
+    }
+}
+</code></pre><p>This sets the width and height properties of the struct, and creates a vector for each row:</p>
+<pre><code>let row = vec![0; width as usize];
+</code></pre><p>Each row is set to contain <code>width</code> number of elements, all set to <code>0</code>; all these rows are then added to the <code>board</code> vector and added to the <code>Level</code> struct. In Rust, vectors are growable arrays which adds a bit of overhead since they need to be able to resize. If we had a static size for the board, so we didn&#39;t have <code>width</code> and <code>height</code> in the <code>Level</code> struct, then we could use an array for the board instead of a Vector. Since we&#39;re dynamically creating the board size from the width and height, we&#39;ll need to use a vector instead.</p>
+<h2 id="display">Display</h2>
+<p>The <code>#[derive(Debug)]</code> lets us print out the contents of our level, but this is a bit of a mess at the moment with a single line of zeroes. To allow custom formatting, we need to derive the <code>Display</code> trait on <code>Level</code> so we can print out a nice map. The <code>Display</code> trait is pretty simple: we just need to provide a <code>fmt</code> function in an implementation block for our struct, and in the function we can print out whatever we like.</p>
+<pre><code>use std::fmt;
+
+struct Level {
+    ...
+}
+
+impl Level {
+    ...
+}
+
+impl fmt::Display for Level {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        for row in 0..self.height as usize {
+            for col in 0..self.width as usize {
+                write!(f, &quot;{:?} &quot;, self.board[row][col])?
+            }
+            write!(f, &quot;\n&quot;)?
+        }
+
+        Ok(())
+    }
+}
+
+fn main() {
+    let level = Level::new(10, 8);
+    println!(&quot;{}&quot;, level); // note this has changed from {:?} to {} (debug vs display)
+}
+</code></pre><p>In the <code>fmt</code> function, we&#39;re looping through each entry in the board and printing out the <code>{:?}</code> debug string, since each entry is an integer, along with a space, and for each row array we add a line break. Also notice that in <code>main</code> the println has changed from <code>{:?}</code> to <code>{}</code> - the former is for debug printing, and the latter uses our new <code>Display</code> formatting.</p>
+<p>Run this code, and the level should look a bit nicer:</p>
+<pre><code>0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0
+</code></pre><h2 id="room">Room</h2>
+<p>Right, it looks nicer now, but is very boring. Let&#39;s do the fun bit, and add some rooms to our map!</p>
+<p>Create <code>src/room.rs</code> and add the following:</p>
+<pre><code>// room.rs
+
+pub struct Room {
+    pub x: i32,
+    pub y: i32,
+    pub x2: i32,
+    pub y2: i32,
+    pub width: i32,
+    pub height: i32,
+    pub centre: (i32, i32)
+}
+
+impl Room {
+    pub fn new(x: i32, y: i32, width: i32, height: i32) -&gt; Self {
+        Room {
+            x,
+            y,
+            x2: x + width,
+            y2: y + height,
+            width,
+            height,
+            centre: (x + (width / 2), y + (height / 2))
+        }
+    }
+
+    pub fn intersects(&amp;self, other: &amp;Self) -&gt; bool {
+        self.x &lt;= other.x2 &amp;&amp; self.x2 &gt;= other.x &amp;&amp; self.y &lt;= other.y2 &amp;&amp; self.y2 &gt;= other.y
+    }
+}
+</code></pre><p>The <code>Room</code> struct contains the points of the room&#39;s rectangle, along with its&#39; width, height and centre point. The <code>new</code> function saves us having to calculate the points and centre when we call it, and the <code>intersects</code> function will be used when placing rooms to make sure the rooms aren&#39;t overlapping.</p>
+<h3 id="refactor-level">Refactor Level</h3>
+<p>Before we start using <code>Room</code>, let&#39;s tidy up the <code>Level</code> struct. Create <code>src/level.rs</code> and move all the level-related code into it; update <code>struct Level</code> to <code>pub struct level</code> and <code>fn new</code> to <code>pub fn new</code>:</p>
+<pre><code>// level.rs
+use std::fmt;
+
+pub struct Level {
+    width: i32,
+    height: i32,
+    board: Vec&lt;Vec&lt;i32&gt;&gt;
+}
+
+impl Level {
+    pub fn new(width: i32, height: i32) -&gt; Self {
+        let mut board = Vec::new();
+        for _ in 0..height {
+            let row = vec![0; width as usize];
+            board.push(row);
+        }
+
+        Level {
+            width,
+            height,
+            board
+        }
+    }
+}
+
+impl fmt::Display for Level {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        for row in 0..self.height as usize {
+            for col in 0..self.width as usize {
+                write!(f, &quot;{:?} &quot;, self.board[row][col])?
+            }
+            write!(f, &quot;\n&quot;)?
+        }
+
+        Ok(())
+    }
+}
+</code></pre><p>The <code>pub</code> annotations allow the struct to be used in other files in our project, otherwise we&#39;d have errors when trying to run the project.</p>
+<p>Update <code>main.rs</code> to declare and use <code>Level</code>:</p>
+<pre><code>// main.rs
+mod level;
+
+use level::Level;
+
+fn main() {
+    let level = Level::new(10, 8);
+    println!(&quot;{}&quot;, level);
+}
+</code></pre><p><code>mod level</code> declares the level module, then <code>use level::Level</code> imports the struct into the main file. Compile and run again to check that everthing&#39;s still working with <code>cargo run</code> - you should see the board again.</p>
+<p>Let&#39;s actually add rooms now! First of all, we need to add the <code>rand</code> crate to our project; this provides random-number functionality which we can use to get different-sized rooms. In <code>Cargo.toml</code>, add <code>rand = &quot;0.5&quot;</code> under the <code>[dependencies]</code>:</p>
+<pre><code># Cargo.toml
+
+[dependencies]
+rand = &quot;0.5&quot;
+</code></pre><p>We now need to declare that we&#39;re using this crate in <code>main.rs</code> - at the top of the file, add <code>extern crate rand;</code>:</p>
+<pre><code>// main.rs
+extern crate rand;
+...
+</code></pre><p>And in <code>level.rs</code> we add a <code>use</code> statement so it gets imported:</p>
+<pre><code>// level.rs
+use rand;
+use rand::prelude::*;
+use std::fmt;
+...
+</code></pre><p>Run <code>cargo run</code> - this will download and compile the <code>rand</code> crate, then print out exactly the same board as before. The <code>use rand::prelude::*</code> statement imports standard traits and functions from the rand crate - this is a shortcut to having to know exactly which imports you want and listing them all out.</p>
+<p>We now need to add a vector to the level to track rooms - this will be used to make sure that no rooms overlap - and add a function which places them.</p>
+<pre><code>// level.rs
+use std::fmt;
+use rand;
+use rand::prelude::*;
+use room::Room;     // use Room struct
+
+pub struct Level {
+    width: i32,
+    height: i32,
+    board: Vec&lt;Vec&lt;i32&gt;&gt;,
+    rooms: Vec&lt;Room&gt;    // keep track of rooms
+}
+
+impl Level {
+    pub fn new(width: i32, height: i32) -&gt; Self {
+        let mut board = Vec::new();
+        for _ in 0..height {
+            let row = vec![0; width as usize];
+            board.push(row);
+        }
+
+        Level {
+            width,
+            height,
+            board,
+            rooms: Vec::new()   // initialise Room array
+        }
+    }
+
+    // create rooms in the level
+    pub fn place_rooms(&amp;mut self, rng: &amp;mut StdRng) {
+        // create a random number generator
+        let mut rng = rand::thread_rng();
+
+        // configure room sizes
+        let max_rooms = 10;
+        let min_room_width = 4;
+        let max_room_width = 8;
+        let min_room_height = 5;
+        let max_room_height = 12;
+
+        for _ in 0..max_rooms {
+            // place up to max_rooms - if it collides with another, it won&#39;t get placed
+
+            let mut x = rng.gen_range(0, self.width);
+            let mut y = rng.gen_range(0, self.height);
+
+            let width = rng.gen_range(min_room_width, max_room_width);
+            let height = rng.gen_range(min_room_height, max_room_height);
+
+            // if it&#39;s off the board, shift it back on again
+            if x + width &gt; self.width {
+                x = self.width - width;
+            }
+
+            if y + height &gt; self.height {
+                y = self.height - height;
+            }
+
+            let mut collides = false;
+            let room = Room::new(x, y, width, height);
+
+            // check all other rooms we&#39;ve placed to see if this one
+            // collides with them
+            for other_room in &amp;self.rooms {
+                if room.intersects(&amp;other_room) {
+                    collides = true;
+                    break;
+                }
+            }
+
+            // if the new room doesn&#39;t collide, add it to the level
+            if !collides {
+                self.add_room(&amp;room);
+            }
+        }
+    }
+
+    fn add_room(&amp;mut self, room: &amp;Room) {
+        // loop through all items in the board which are covered by the new room
+        // and change them to &#39;1&#39; which indicates they are not empty
+        for row in 0..room.height {
+            for col in 0..room.width {
+                let y = (room.y + row) as usize;
+                let x = (room.x + col) as usize;
+
+                self.board[y][x] = 1;
+            }
+        }
+
+        // also keep track of rooms so that we can check for collisions
+        self.rooms.push(*room);
+    }
+}
+
+impl fmt::Display for Level {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        for row in 0..self.height as usize {
+            for col in 0..self.width as usize {
+                write!(f, &quot;{:?} &quot;, self.board[row][col])?
+            }
+            write!(f, &quot;\n&quot;)?
+        }
+
+        Ok(())
+    }
+}
+
+</code></pre><p>You&#39;ll notice that the <code>self.rooms.push(*room)</code> throws an error - this is because we only have a reference to <code>room</code> (ie it&#39;s passed to <code>add_room</code> as <code>&amp;Room</code>) so we can&#39;t move the struct itself into our <code>rooms</code> array. We could change the parameter to remove the borrow (ie <code>fn add_room(&amp;mut self, room: Room)</code>), but this will make things a bit hairy later on when we need to use the room data again. Instead, we can derive the Copy trait on <code>Room</code> so that the <code>rooms</code> vector has a copy of the room instead of the original struct:</p>
+<pre><code>// room.rs
+#[derive(Clone, Copy)]
+pub struct Room {
+    ...
+}
+</code></pre><p>The Copy trait requires the Clone trait to be satisfied, so we add both to the room.</p>
+<p>Finally, we need to actually call our new function - update <code>main</code> to place rooms:</p>
+<pre><code>extern crate rand;
+
+mod room;
+mod level;
+
+use level::Level;
+
+fn main() {
+    let mut level = Level::new(48, 40);     // make the map bigger so there&#39;s space for rooms
+    level.place_rooms();
+    println!(&quot;{}&quot;, level);
+}
+</code></pre><p>When run, we now have rooms!</p>
+<pre><code>0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
+0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+1 1 1 1 1 0 1 1 1 1 1 1 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+1 1 1 1 1 0 1 1 1 1 1 1 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+</code></pre><h2 id="seedable">Seedable</h2>
+<p>If you run the programme several times, you&#39;ll notice that the layout changes each time. When using procedural generation, it&#39;s nice to have reproducible output so you can re-use levels you like. The way we do this is by using a seedable random number generator, which will produce the same random numbers when given the same initial value. This means that every time we use the same seed, we&#39;ll get the same level out, which is how things like the Spelunky daily challenges work - everyone gets the same seed which generates the same levels.</p>
+<p>The <code>rand</code> crate provides this functionality, so we all we need to do is change where the type of random number generator, and make sure we use the same one throughout the code.</p>
+<p>I&#39;ve found the <code>SeedableRng</code> provided by the <code>rand</code> crate to be a bit picky in what it accepts as a seed, so we&#39;ll add a couple of crates to help create a seed in the correct format.</p>
+<p>In Cargo.toml, add <code>sha2</code> and <code>arrayref</code> crates:</p>
+<pre><code># Cargo.toml
+[dependencies]
+arrayref = &quot;0.3.4&quot;
+rand = &quot;0.5&quot;
+sha2 = &quot;0.7.1&quot;
+</code></pre><p><code>SeedableRng</code> requires an array of 32 <code>u8</code> items, so these crates will help us turn a string of text into the appropriate format. <code>Sha2</code> provides hash functions, so we can use this to turn a string of any length into a string 64 characters long; <code>arrayref</code> provides a macro to turn a string&#39;s bytes into the format required by <code>SeedableRng</code> because it can&#39;t accept String::as_bytes directly.</p>
+<p>In <code>main.rs</code>, we need to declare the crates and use them, then set up the hash to pass into the random number generator:</p>
+<pre><code>// main.rs
+extern crate rand;
+
+// import crates
+extern crate sha2;
+
+// arrayref supplies a macro, so add annotation
+#[macro_use]
+extern crate arrayref;
+
+mod room;
+mod level;
+
+// use the sha functions
+use sha2::{ Sha256, Digest };
+use rand::prelude::*;
+use level::Level;
+
+// turn a string into a string 64 characters in length
+fn create_hash(text: &amp;str) -&gt; String {
+    let mut hasher = Sha256::default();
+    hasher.input(text.as_bytes());
+    format!(&quot;{:x}&quot;, hasher.result())
+}
+
+fn main() {
+    // this string can be anything
+    let hash = create_hash(&quot;manuelneuersweeperkeeper&quot;);
+
+    // turn the hashed string into the correct length and type required by SeedableRng
+    let seed = array_ref!(hash.as_bytes(), 0, 32);
+
+    // create the random number generator
+    // this will be used everywhere we need randomness so
+    // that the output is reproducible
+    let mut rng: StdRng = SeedableRng::from_seed(*seed);
+
+    let mut level = Level::new(48, 40);
+
+    // pass the rng into &#39;place_rooms&#39;
+    level.place_rooms(&amp;mut rng);
+    println!(&quot;{}&quot;, level);
+}
+</code></pre><p>And then tweak <code>level.rs</code> so <code>place_rooms</code> takes <code>rng</code> as a parameter</p>
+<pre><code>use std::fmt;
+// removed use rand;
+use rand::prelude::*;
+use room::Room;
+
+pub fn place_rooms(&amp;mut self, rng: &amp;mut StdRng) {
+
+    // removed let mut rng = rand::thread_rng();
+    let max_rooms = 10;
+    let min_room_width = 4;
+    let max_room_width = 8;
+    ...
+</code></pre><p>Run the project again - <code>cargo run</code> - Cargo will download the crates then compile the project. You should now see the same map every time you run the project - try changing the hash string for different maps.</p>
+<h3 id="full-listing">Full listing</h3>
+<h4 id="main-rs">main.rs</h4>
+<pre><code>extern crate rand;
+extern crate sha2;
+#[macro_use]
+extern crate arrayref;
+
+mod room;
+mod level;
+
+use sha2::{ Sha256, Digest };
+use rand::prelude::*;
+use level::Level;
+
+fn create_hash(text: &amp;str) -&gt; String {
+    let mut hasher = Sha256::default();
+    hasher.input(text.as_bytes());
+    format!(&quot;{:x}&quot;, hasher.result())
+}
+
+fn main() {
+    let hash = create_hash(&quot;manuelneuersweeperkeeper&quot;);
+    let seed = array_ref!(hash.as_bytes(), 0, 32);
+    let mut rng: StdRng = SeedableRng::from_seed(*seed);
+
+    let mut level = Level::new(48, 40);
+    level.place_rooms(&amp;mut rng);
+    println!(&quot;{}&quot;, level);
+}
+</code></pre><h4 id="level-rs">level.rs</h4>
+<pre><code>use std::fmt;
+use rand::prelude::*;
+use room::Room;
+
+pub struct Level {
+    width: i32,
+    height: i32,
+    board: Vec&lt;Vec&lt;i32&gt;&gt;,
+    rooms: Vec&lt;Room&gt;
+}
+
+impl Level {
+    pub fn new(width: i32, height: i32) -&gt; Self {
+        let mut board = Vec::new();
+        for _ in 0..height {
+            let row = vec![0; width as usize];
+            board.push(row);
+        }
+
+        Level {
+            width,
+            height,
+            board,
+            rooms: Vec::new()
+        }
+    }
+
+    pub fn place_rooms(&amp;mut self, rng: &amp;mut StdRng) {
+        let max_rooms = 10;
+        let min_room_width = 4;
+        let max_room_width = 8;
+        let min_room_height = 5;
+        let max_room_height = 12;
+
+        for _ in 0..max_rooms {
+            let mut x = rng.gen_range(0, self.width);
+            let mut y = rng.gen_range(0, self.height);
+
+            let width = rng.gen_range(min_room_width, max_room_width);
+            let height = rng.gen_range(min_room_height, max_room_height);
+
+            if x + width &gt; self.width {
+                x = self.width - width;
+            }
+
+            if y + height &gt; self.height {
+                y = self.height - height;
+            }
+
+            let mut collides = false;
+            let room = Room::new(x, y, width, height);
+
+            for other_room in &amp;self.rooms {
+                if room.intersects(&amp;other_room) {
+                    collides = true;
+                    break;
+                }
+            }
+
+            if !collides {
+                self.add_room(&amp;room);
+            }
+        }
+    }
+
+    fn add_room(&amp;mut self, room: &amp;Room) {
+        for row in 0..room.height {
+            for col in 0..room.width {
+                let y = (room.y + row) as usize;
+                let x = (room.x + col) as usize;
+
+                self.board[y][x] = 1;
+            }
+        }
+
+        self.rooms.push(*room);
+    }
+}
+
+impl fmt::Display for Level {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        for row in 0..self.height as usize {
+            for col in 0..self.width as usize {
+                write!(f, &quot;{:?} &quot;, self.board[row][col])?
+            }
+            write!(f, &quot;\n&quot;)?
+        }
+
+        Ok(())
+    }
+}
+</code></pre><h4 id="room-rs">room.rs</h4>
+<pre><code>#[derive(Clone, Copy)]
+pub struct Room {
+    pub x: i32,
+    pub y: i32,
+    pub x2: i32,
+    pub y2: i32,
+    pub width: i32,
+    pub height: i32,
+    pub centre: (i32, i32)
+}
+
+impl Room {
+    pub fn new(x: i32, y: i32, width: i32, height: i32) -&gt; Self {
+        Room {
+            x,
+            y,
+            x2: x + width,
+            y2: y + height,
+            width,
+            height,
+            centre: (x + (width / 2), y + (height / 2))
+        }
+    }
+
+    pub fn intersects(&amp;self, other: &amp;Self) -&gt; bool {
+        self.x &lt;= other.x2 &amp;&amp; self.x2 &gt;= other.x &amp;&amp; self.y &lt;= other.y2 &amp;&amp; self.y2 &gt;= other.y
+    }
+}
+</code></pre><h2 id="refactor-using-enums">Refactor using Enums</h2>
+<p>At the moment, we&#39;ve got a few magic numbers floating around - <code>0</code> for empty spaces, and <code>1</code> for rooms, so before we add more of them with corridors, let&#39;s tidy those up. We&#39;ll create an enum for tile types which we&#39;ll use instead of numbers, and implement the Display trait so they still show up as zeroes and ones. Even though we only have two types of tiles at the moment, using an enum makes it easy to extend - we could add doors or pits of lava - and see which tile is being used in each function.</p>
+<p>In <code>level.rs</code>, create a new Tile enum:</p>
+<pre><code>#[derive(Clone)]
+pub enum Tile {
+    Empty,
+    Walkable
+}
+
+impl fmt::Display for Tile {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        match self {
+            Tile::Empty =&gt; write!(f, &quot;0&quot;),
+            Tile::Walkable =&gt; write!(f, &quot;1&quot;)
+        }
+    }
+}
+</code></pre><p>We define two variations in the <code>Tile</code> enum, <code>Empty</code> and <code>Walkable</code> which will represent empty areas and rooms/corridors respectively. The Display trait simply checks which tile variation is currently being printed, then prints a string of &quot;0&quot; or &quot;1&quot; - this will mean we can drop this replacement in and see the same map as before.</p>
+<p>Update the <code>Level</code> implementation to use the enum:</p>
+<pre><code>// level.rs
+pub struct Level {
+    width: i32,
+    height: i32,
+    board: Vec&lt;Vec&lt;Tile&gt;&gt;,  // now a vector of Tile
+    rooms: Vec&lt;Room&gt;
+}
+
+impl Level {
+    pub fn new(width: i32, height: i32) -&gt; Self {
+        let mut board = Vec::new();
+        for _ in 0..height {
+            let row = vec![Tile::Empty; width as usize];    // use Tile::Empty
+            board.push(row);
+        }
+
+        Level {
+            width,
+            height,
+            board,
+            rooms: Vec::new()
+        }
+    }
+
+
+    fn add_room(&amp;mut self, room: &amp;Room) {
+        for row in 0..room.height {
+            for col in 0..room.width {
+                let y = (room.y + row) as usize;
+                let x = (room.x + col) as usize;
+
+                self.board[y][x] = Tile::Walkable;      // use Tile
+            }
+        }
+
+        self.rooms.push(*room);
+    }
+
+    ...
+}
+
+impl fmt::Display for Level {
+    fn fmt(&amp;self, f: &amp;mut fmt::Formatter) -&gt; fmt::Result {
+        for row in 0..self.height as usize {
+            for col in 0..self.width as usize {
+                write!(f, &quot;{} &quot;, self.board[row][col])? // change to {} (Display)
+            }
+            write!(f, &quot;\n&quot;)?
+        }
+
+        Ok(())
+    }
+}
+</code></pre><p>Run <code>cargo run</code> again - you should see the same output. Right, on to the corridors!</p>
+<h2 id="corridors">Corridors</h2>
+<p>Let&#39;s connect our rooms together so it&#39;s more of a useful dungeon. The procedure for adding corridors is going to be very basic - we&#39;ll loop through all the rooms in the level, and connect the centre point of each pair with vertical and horizontal lines.</p>
+<p>To make the corridor functions a bit more readable, we&#39;ll change the Room struct&#39;s <code>centre</code> from a tuple into a struct - this will allow us to name the centre point&#39;s co-ordinates so we can access them via <code>centre.x</code>/<code>centre.y</code> rather than <code>centre.0</code>/<code>centre.1</code>.</p>
+<pre><code>// room.rs
+
+#[derive(Debug, Clone, Copy)]
+pub struct Point {
+    pub x: i32,
+    pub y: i32
+}
+
+#[derive(Clone, Copy)]
+pub struct Room {
+    ...
+    pub centre: Point
+}
+
+impl Room {
+    pub fn new(x: i32, y: i32, width: i32, height: i32) -&gt; Self {
+        Room {
+            ...
+            centre: Point {
+                x: x + (width / 2),
+                y: y + (height / 2)
+            }
+        }
+    }
+    ...
+</code></pre><p>That&#39;s the last bit of refactoring for now, promise! Right, update the Level <code>impl</code> block in <code>level.rs</code> with three functions:</p>
+<pre><code>// level.rs
+...
+
+impl Level {
+    ...
+
+    pub fn place_corridors(&amp;mut self, rng: &amp;mut StdRng) {
+        for i in 0..(self.rooms.len() - 1) {
+            let room = self.rooms[i];
+            let other = self.rooms[i + 1];
+
+            // randomly pick vert or horz
+            match rng.gen_range(0, 2) {
+                0 =&gt; {
+                    match room.centre.x &lt;= other.centre.x {
+                        true =&gt; self.horz_corridor(room.centre.x, other.centre.x, room.centre.y),
+                        false =&gt; self.horz_corridor(other.centre.x, room.centre.x, room.centre.y)
+                    }
+                    match room.centre.y &lt;= other.centre.y {
+                        true =&gt; self.vert_corridor(room.centre.y, other.centre.y, other.centre.x),
+                        false =&gt; self.vert_corridor(other.centre.y, room.centre.y, other.centre.x)
+                    }
+                }
+                _ =&gt; {
+                    match room.centre.y &lt;= other.centre.y {
+                        true =&gt; self.vert_corridor(room.centre.y, other.centre.y, other.centre.x),
+                        false =&gt; self.vert_corridor(other.centre.y, room.centre.y, other.centre.x)
+                    }
+                    match room.centre.x &lt;= other.centre.x {
+                        true =&gt; self.horz_corridor(room.centre.x, other.centre.x, room.centre.y),
+                        false =&gt; self.horz_corridor(other.centre.x, room.centre.x, room.centre.y)
+                    }
+                }
+            }
+        }
+    }
+
+    fn horz_corridor(&amp;mut self, start_x: i32, end_x: i32, y: i32) {
+        for col in start_x..end_x + 1 {
+            self.board[col as usize][y as usize] = Tile::Walkable;
+        }
+    }
+
+    fn vert_corridor(&amp;mut self, start_y: i32, end_y: i32, x: i32) {
+        for row in start_y..end_y + 1 {
+            self.board[x as usize][row as usize] = Tile::Walkable;
+        }
+    }
+}
+</code></pre><p>and update <code>main.rs</code> to call <code>place_corridors</code>:</p>
+<pre><code>// main.rs
+...
+fn main() {
+    let hash = create_hash(&quot;manuelneuersweeperkeeper&quot;);
+    let seed = array_ref!(hash.as_bytes(), 0, 32);
+    let mut rng: StdRng = SeedableRng::from_seed(*seed);
+
+    let mut level = Level::new(48, 40);
+    level.place_rooms(&amp;mut rng);
+    level.place_corridors(&amp;mut rng);    // call place_corridors after we&#39;ve added rooms
+    println!(&quot;{}&quot;, level);
+}
+</code></pre><p>If you run the project again, you&#39;ll see we&#39;ve connected the rooms with corridors.</p>
+<h3 id="corridor-placement">Corridor placement</h3>
+<p>Let&#39;s go into a bit more detail about the corridor placement.</p>
+<pre><code>pub fn place_corridors(&amp;mut self, rng: &amp;mut StdRng) {
+    for i in 0..(self.rooms.len() - 1) {
+        let room = self.rooms[i];
+        let other = self.rooms[i + 1];
+</code></pre><p>As with the <code>place_rooms</code> function, we pass in the seeded random number generator so that the placement is repeatable with the same seed. We then start going through each room that&#39;s been placed in the level as a pair, starting with the first and second. The next loop will pick the second and third, then the third and fourth, and so on; once we get to the second-to-last and last then that&#39;s the final loop. This means that the last room won&#39;t connect with the first room - this could be changed by checking if we&#39;re at the last element then using the first room as <code>other</code>.</p>
+<pre><code>match rng.gen_range(0, 2) {
+    0 =&gt; {},
+    _ =&gt; {},
+}
+</code></pre><p>Next, we decide whether to start with a horizontal or vertical corridor between rooms. This adds a bit of variety to the corridors, since we don&#39;t want every corridor to always start horizontally. The range is between 0 and 2 since <code>gen_range</code> includes the lower bound (0) but excludes the upper (2), and we want a fifty-fifty split.</p>
+<p>The <code>horz_corridor</code> and <code>vert_corridor</code> are very simple functions - they simply create a straight line of walkable tiles between two points. The line goes from the centre point of the first room all the way to the centre point of the next room, at which point the opposite corridor function is called to join the corridors together. The <code>room.centre.x &lt;= other.centre.x</code> checks before the corridor function calls are because ranges in Rust - 0..x - will only work with positive numbers, so we need to make sure the first parameter is the room with the smallest centre co-ordinate (<code>x</code> or <code>y</code> depending on whether its horizontal or vertical).</p>
+<p>Running the project again should now give you a map with several rooms connected with corridors!</p>
+<pre><code>0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0
+0 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0
+0 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0
+0 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0
+0 1 1 1 1 1 1 0 0 0 0 0 0 0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0
+0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0
+0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0
+0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0
+0 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+</code></pre><p><img src="manuelneuersweeperkeeper.png" alt=""></p>
+<h2 id="json">JSON</h2>
+<p>We can print the map out in the console, but it&#39;s not much use there. We can convert the level into JSON so it can be exported and used in a game using <code>serde</code>.</p>
+<p>In <code>Cargo.toml</code>, add <code>serde</code>, <code>serde_json</code> and <code>serde_derive</code>:</p>
+<pre><code># Cargo.toml
+
+[dependencies]
+arrayref = &quot;0.3.4&quot;
+rand = &quot;0.5&quot;
+sha2 = &quot;0.7.1&quot;
+serde = &quot;1.0.68&quot;
+serde_derive = &quot;1.0.68&quot;
+serde_json = &quot;1.0.22&quot;
+</code></pre><p><code>serde</code> is a serialisation and deserialisation crate which contains the core functions, while <code>serde_json</code> is specifically for converting JSON data. <code>serde_derive</code> is an incredibly useful crate which allows most Rust data structures to be automatically converted by deriving the <code>Serialize</code> or <code>Deserialize</code> traits.</p>
+<p>In <code>main.rs</code>, import the crates:</p>
+<pre><code>// main.rs
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
+...
+</code></pre><p>Then we need to derive <code>Serialize</code> on our structs so we can convert the level into JSON.</p>
+<pre><code>// level.rs
+...
+#[derive(Clone, Serialize)]
+pub enum Tile {
+    ...
+}
+
+...
+
+#[derive(Serialize)]
+pub struct Level {
+    ...
+</code></pre><pre><code>// room.rs
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct Point {
+    pub x: i32,
+    pub y: i32
+}
+
+#[derive(Clone, Copy, Serialize)]
+pub struct Room {
+    ...
+</code></pre><p>We have to add <code>Serialize</code> to all the structs used by <code>Level</code> to be able to serialise it completely: <code>Tile</code> and <code>Room</code> are used directly in <code>Level</code>, and <code>Point</code> is used in <code>Room</code>. If you leave one of those out, you&#39;ll see an error message complaining that the Serialize trait is not satisfied, so you should be able to track down everything you need to mark as serialisable. Primitive types, like i32, are already implemented in serde, so we don&#39;t need to do anything extra with the level&#39;s width or height properties.</p>
+<p>Once this is done, update <code>main.rs</code> again to actually serialise the level and print it out:</p>
+<pre><code>// main.rs
+
+fn main() {
+    let hash = create_hash(&quot;manuelneuersweeperkeeper&quot;);
+    let seed = array_ref!(hash.as_bytes(), 0, 32);
+    let mut rng: StdRng = SeedableRng::from_seed(*seed);
+
+    let mut level = Level::new(48, 40);
+    level.place_rooms(&amp;mut rng);
+    level.place_corridors(&amp;mut rng);
+    // println!(&quot;{}&quot;, level);
+
+    let serialised = serde_json::to_string(&amp;level).unwrap();
+    println!(&quot;{:?}&quot;, serialised);
+}
+</code></pre><p>Run the project again, and...</p>
+<pre><code>&quot;{\&quot;width\&quot;:48,\&quot;height\&quot;:40,\&quot;board\&quot;:[[\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;],[\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,
+... snip ...
+]],\&quot;rooms\&quot;:[{\&quot;x\&quot;:35,\&quot;y\&quot;:25,\&quot;x2\&quot;:42,\&quot;y2\&quot;:32,\&quot;width\&quot;:7,\&quot;height\&quot;:7,\&quot;centre\&quot;:{\&quot;x\&quot;:38,\&quot;y\&quot;:28}},{\&quot;x\&quot;:32,\&quot;y\&quot;:13,\&quot;x2\&quot;:38,\&quot;y2\&quot;:20,\&quot;width\&quot;:6,\&quot;height\&quot;:7,\&quot;centre\&quot;:{\&quot;x\&quot;:35,\&quot;y\&quot;:16}},{\&quot;x\&quot;:1,\&quot;y\&quot;:21,\&quot;x2\&quot;:7,\&quot;y2\&quot;:29,\&quot;width\&quot;:6,\&quot;height\&quot;:8,\&quot;centre\&quot;:{\&quot;x\&quot;:4,\&quot;y\&quot;:25}},{\&quot;x\&quot;:15,\&quot;y\&quot;:1,\&quot;x2\&quot;:22,\&quot;y2\&quot;:10,\&quot;width\&quot;:7,\&quot;height\&quot;:9,\&quot;centre\&quot;:{\&quot;x\&quot;:18,\&quot;y\&quot;:5}},{\&quot;x\&quot;:14,\&quot;y\&quot;:15,\&quot;x2\&quot;:20,\&quot;y2\&quot;:25,\&quot;width\&quot;:6,\&quot;height\&quot;:10,\&quot;centre\&quot;:{\&quot;x\&quot;:17,\&quot;y\&quot;:20}}]}&quot;
+</code></pre><p>Right. Not quite what we had in mind.</p>
+<h3 id="custom-serialisation">Custom serialisation</h3>
+<p>The default serialisation for the <code>Tile</code> enum is just using a string, in this case &quot;Empty&quot; or &quot;Walkable&quot;, which is far from readable. However, it&#39;s easy enough to <a href="https://serde.rs/impl-serialize.html">create our own custom serialisation</a> with Serde - all we need to do is implement it for Tile like we already have with Display, and then we can output whatever we like as JSON.</p>
+<p>In <code>level.rs</code>, remove the <code>Serialize</code> derive tag from <code>Tile</code>, then add a new implementation block:</p>
+<pre><code>// level.rs
+use serde::{ Serialize, Serializer };   // add &#39;use&#39; for custom serialisation
+
+#[derive(Clone)]    // remove Serialize
+pub enum Tile {
+    Empty,
+    Walkable
+}
+
+impl Serialize for Tile {
+    fn serialize&lt;S&gt;(&amp;self, serializer: S) -&gt; Result&lt;S::Ok, S::Error&gt;
+        where S: Serializer {
+        match self {
+            Tile::Empty =&gt; serializer.serialize_i32(0),
+            Tile::Walkable =&gt; serializer.serialize_i32(1)
+        }
+    }
+}
+
+...
+</code></pre><p>The <code>serialize</code> function has quite a complicated-looking method signature:</p>
+<pre><code>fn serialize&lt;S&gt;(&amp;self, serializer: S) -&gt; Result&lt;S::Ok, S::Error&gt;
+    where S: Serializer {
+</code></pre><p><code>S</code> is a serialiser of any format - Serde can be for JSON or a number of other formats - so this implementation block is generic: you should be able to add other serialisations without having to change this code. The code in the function is very similar to Tile&#39;s Display implementation: we check the type of the Tile enum, then return a serialised <code>i32</code>, either zero or one, depending on the enum value.</p>
+<p>Run the project again, and this time the serialised output should look much nicer!</p>
+<pre><code>&quot;{
+    \&quot;width\&quot;:48,
+    \&quot;height\&quot;:40,
+    \&quot;board\&quot;:[
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],
+        [0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],
+        [0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],
+        [0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+        [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    ],
+    \&quot;rooms\&quot;:[
+        {\&quot;x\&quot;:35,\&quot;y\&quot;:25,\&quot;x2\&quot;:42,\&quot;y2\&quot;:32,\&quot;width\&quot;:7,\&quot;height\&quot;:7,\&quot;centre\&quot;:{\&quot;x\&quot;:38,\&quot;y\&quot;:28}},
+        {\&quot;x\&quot;:32,\&quot;y\&quot;:13,\&quot;x2\&quot;:38,\&quot;y2\&quot;:20,\&quot;width\&quot;:6,\&quot;height\&quot;:7,\&quot;centre\&quot;:{\&quot;x\&quot;:35,\&quot;y\&quot;:16}},
+        {\&quot;x\&quot;:1,\&quot;y\&quot;:21,\&quot;x2\&quot;:7,\&quot;y2\&quot;:29,\&quot;width\&quot;:6,\&quot;height\&quot;:8,\&quot;centre\&quot;:{\&quot;x\&quot;:4,\&quot;y\&quot;:25}},
+        {\&quot;x\&quot;:15,\&quot;y\&quot;:1,\&quot;x2\&quot;:22,\&quot;y2\&quot;:10,\&quot;width\&quot;:7,\&quot;height\&quot;:9,\&quot;centre\&quot;:{\&quot;x\&quot;:18,\&quot;y\&quot;:5}},
+        {\&quot;x\&quot;:14,\&quot;y\&quot;:15,\&quot;x2\&quot;:20,\&quot;y2\&quot;:25,\&quot;width\&quot;:6,\&quot;height\&quot;:10,\&quot;centre\&quot;:{\&quot;x\&quot;:17,\&quot;y\&quot;:20}}
+    ]
+}&quot;
+</code></pre><h2 id="changing-hashes">Changing hashes</h2>
+<p>At the moment, to create a new map we have to change the string we&#39;re using to create the hash in <code>main.rs</code>, then recompile the entire project and run it: quite a slow process. Instead, let&#39;s allow a string to be passed to the programme at runtime so we can create new levels without having to re-compile the project every time.</p>
+<p>In <code>main.rs</code>, update the <code>main</code> function to read command-line arguments:</p>
+<pre><code>...
+use rand::distributions::Alphanumeric;
+...
+
+fn main() {
+    let hash = match std::env::args().nth(1) {
+        Some(text) =&gt; create_hash(&amp;text),
+        None =&gt; create_hash(&amp;thread_rng().sample_iter(&amp;Alphanumeric).take(32).collect::&lt;String&gt;())
+    };
+
+    let seed = array_ref!(hash.as_bytes(), 0, 32);
+    let mut rng: StdRng = SeedableRng::from_seed(*seed);
+
+    let mut level = Level::new(48, 40);
+    level.place_rooms(&amp;mut rng);
+    level.place_corridors(&amp;mut rng);
+
+    println!(&quot;{}&quot;, level); // uncomment - slightly easier to see what&#39;s happening than with the JSON output
+
+    let serialised = serde_json::to_string(&amp;level).unwrap();
+    println!(&quot;{:?}&quot;, serialised);
+}
+</code></pre><p><code>hash</code> is now replaced with a <code>match</code>: <code>std::env::args::nth(1)</code> tries to read the second argument to the programme and if it exists, passes it to the <code>create_hash</code> function. (The second argument is used since the first is the name of the programme). If no argument was passed, we create a random thirty-two character string and pass that to <code>create_hash</code>; whichever path is taken, we set the result back to <code>hash</code> which is then used as the seed.</p>
+<p>Now, if you run the project and pass &quot;manuelneuersweeperkeeper&quot;, you should see the same output as before:</p>
+<pre><code>cargo run manuelneuersweeperkeeper
+</code></pre><p>If you just run <code>cargo run</code> then a random string is created and used instead, and you get a different map every time. However, if you like one of the maps it creates, there&#39;s no way to re-use the seed because firstly, we don&#39;t know what the random seed was, and secondly, there&#39;s no way to pass a seed without it being hashed.</p>
+<h3 id="save-hash">Save hash</h3>
+<p>Let&#39;s update the Level struct so we can keep track of the seed used to create the level - that way, when we print the serialised JSON, we can easily retrieve the seed so we can re-create a level.</p>
+<p>In <code>level.rs</code> we need to add a property to store the hash, then update the <code>new</code> function and pass the hash in where we create the level in <code>main.rs</code>.</p>
+<pre><code>// level.rs
+...
+#[derive(Serialize)]
+pub struct Level {
+    width: i32,
+    height: i32,
+    board: Vec&lt;Vec&lt;Tile&gt;&gt;,
+    rooms: Vec&lt;Room&gt;,
+    hash: String
+}
+
+impl Level {
+    pub fn new(width: i32, height: i32, hash: &amp;String) -&gt; Self {
+        let mut board = Vec::new();
+        for _ in 0..height {
+            let row = vec![Tile::Empty; width as usize];
+            board.push(row);
+        }
+
+        Level {
+            width,
+            height,
+            board,
+            rooms: Vec::new(),
+            hash: hash.clone()
+        }
+    }
+
+...
+</code></pre><pre><code>// main.rs
+
+...
+fn main() {
+    let hash = match std::env::args().nth(1) {
+        Some(text) =&gt; create_hash(&amp;text),
+        None =&gt; create_hash(&amp;thread_rng().sample_iter(&amp;Alphanumeric).take(32).collect::&lt;String&gt;())
+    };
+
+    let seed = array_ref!(hash.as_bytes(), 0, 32);
+    let mut rng: StdRng = SeedableRng::from_seed(*seed);
+
+    let mut level = Level::new(48, 40, &amp;hash);
+    level.place_rooms(&amp;mut rng);
+    level.place_corridors(&amp;mut rng);
+    println!(&quot;{}&quot;, level);
+
+    let serialised = serde_json::to_string(&amp;level).unwrap();
+    println!(&quot;{:?}&quot;, serialised);
+}
+</code></pre><p>Now when we run the project, the level prints out the hash used to create the level:</p>
+<pre><code>{
+    &quot;width&quot;:48,
+    &quot;height&quot;:40,
+    &quot;board&quot;:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
+    &quot;rooms&quot;:[
+        {&quot;x&quot;:35,&quot;y&quot;:25,&quot;x2&quot;:42,&quot;y2&quot;:32,&quot;width&quot;:7,&quot;height&quot;:7,&quot;centre&quot;:{&quot;x&quot;:38,&quot;y&quot;:28}},
+        {&quot;x&quot;:32,&quot;y&quot;:13,&quot;x2&quot;:38,&quot;y2&quot;:20,&quot;width&quot;:6,&quot;height&quot;:7,&quot;centre&quot;:{&quot;x&quot;:35,&quot;y&quot;:16}},
+        {&quot;x&quot;:1,&quot;y&quot;:21,&quot;x2&quot;:7,&quot;y2&quot;:29,&quot;width&quot;:6,&quot;height&quot;:8,&quot;centre&quot;:{&quot;x&quot;:4,&quot;y&quot;:25}},
+        {&quot;x&quot;:15,&quot;y&quot;:1,&quot;x2&quot;:22,&quot;y2&quot;:10,&quot;width&quot;:7,&quot;height&quot;:9,&quot;centre&quot;:{&quot;x&quot;:18,&quot;y&quot;:5}},
+        {&quot;x&quot;:14,&quot;y&quot;:15,&quot;x2&quot;:20,&quot;y2&quot;:25,&quot;width&quot;:6,&quot;height&quot;:10,&quot;centre&quot;:{&quot;x&quot;:17,&quot;y&quot;:20}}
+    ],
+    &quot;hash&quot;:&quot;e8edd254c4ffece9f4937b4f1bae4ef6aec4124f86eee0c09428afac036cef47&quot;
+}
+</code></pre><p>However, we still don&#39;t have a way to pass a seed we already have in to our programme, such as when we use a randomised string. Rather than use positional arguments - so assuming the first argument is going to be a string to hash - let&#39;s use a crate to parse command line arguments.</p>
+<h3 id="parse-arguments-with-clap">Parse arguments with Clap</h3>
+<p><a href="https://github.com/kbknapp/clap-rs">Clap</a> is a handy crate which handles reading and parsing arguments to your programme. Add <code>clap = &quot;2.32.0&quot;</code> to <code>Cargo.toml</code>:</p>
+<pre><code># Cargo.toml
+...
+[dependencies]
+arrayref = &quot;0.3.4&quot;
+clap = &quot;2.32.0&quot;
+rand = &quot;0.5&quot;
+sha2 = &quot;0.7.1&quot;
+serde = &quot;1.0.68&quot;
+serde_derive = &quot;1.0.68&quot;
+serde_json = &quot;1.0.22&quot;
+</code></pre><p>then update <code>main.rs</code> to handle arguments:</p>
+<pre><code>// main.rs
+extern crate clap;
+
+use clap::{ App, Arg };
+
+...
+
+fn main() {
+    // set up Clap
+    let matches = App::new(&quot;Dungeon&quot;)
+                    .version(&quot;1.0&quot;)
+                    .author(&quot;James Baum &lt;@whostolemyhat&gt;&quot;)
+                    .arg(Arg::with_name(&quot;text&quot;)
+                        .short(&quot;t&quot;)
+                        .long(&quot;text&quot;)
+                        .takes_value(true)
+                        .help(&quot;A string to hash and use as a seed&quot;))
+                    .arg(Arg::with_name(&quot;seed&quot;)
+                        .short(&quot;s&quot;)
+                        .long(&quot;seed&quot;)
+                        .takes_value(true)
+                        .help(&quot;An existing seed. Must be 32 characters&quot;))
+                    .get_matches();
+
+    // see if we&#39;ve been passed a seed (-s parameter)
+    let seed: String = match matches.value_of(&quot;seed&quot;) {
+        Some(text) =&gt; {
+
+            // if we have been passed a seed, check that it&#39;s valid
+            if text.chars().count() &lt; 32 {
+
+                // if it&#39;s too short, print a message and end the programme
+                panic!(&quot;Seed must be 32 characters long. Use -t option to create a new seed.&quot;)
+            }
+
+            // if it&#39;s ok, set the value to `seed`
+            text.to_string()
+        },
+
+        // if we didn&#39;t get passed a seed, check to see if we had text (-t)
+        None =&gt; {
+            match matches.value_of(&quot;text&quot;) {
+
+               // if it was provided, set it to `seed`
+               Some(text) =&gt; create_hash(&amp;text),
+
+               // if nothing was provided, create a random string
+               None =&gt; create_hash(&amp;thread_rng().sample_iter(&amp;Alphanumeric).take(32).collect::&lt;String&gt;())
+           }
+        }
+    };
+
+    // once we have `seed`, which is either a valid existing seed or some text,
+    // we need to convert it to [u8] as before
+    let seed_u8 = array_ref!(seed.as_bytes(), 0, 32); // Note this is now `seed_u8`
+
+    // seed the random number generator
+    let mut rng: StdRng = SeedableRng::from_seed(*seed_u8); // As is this
+
+    // then create a level as before
+    let mut level = Level::new(48, 40, &amp;seed); // save `seed`
+    level.place_rooms(&amp;mut rng);
+    level.place_corridors(&amp;mut rng);
+
+    let serialised = serde_json::to_string(&amp;level).unwrap();
+    println!(&quot;{}&quot;, serialised);
+}
+</code></pre><p>Compile and run the project with <code>cargo run</code> - you should see the level created with a random seed (eg <code>8c8f397f8ce594a8669617c6ab347f5778b973d33df2977d1334803de715f753</code>). You can now use that seed and pass it to your programme to re-create the level with the <code>-s</code> flag:<br><code>cargo run -- -s 8c8f397f8ce594a8669617c6ab347f5778b973d33df2977d1334803de715f753</code>, and you should see the same level.</p>
+<p>If you want to pass text as before, then use the <code>-t</code> flag: <code>cargo run -- -t manuelneuersweeperkeeper</code>.</p>
+<p>Note the double dash in the run command (<code>--</code>) - this is only used when running with Cargo, otherwise your arguments would be passed to Cargo and not your programme. When using the compiled output, you don&#39;t need the extra dashes: <code>levelgen -s 8c8f397f8ce594a8669617c6ab347f5778b973d33df2977d1334803de715f753</code>.</p>
+<p>With Clap, you could also set up other parameters to be read in, such as the board size or number of rooms. These parameters would have to be the same every time if you wanted to re-create a level.</p>
+<h2 id="the-end">The end</h2>
+<p>That&#39;s it! There are a few things you could play around with, such as the size or number of rooms in a level, or whether to use certain types of corridors. In the next part, we&#39;ll cover using the JSON output to draw the maps, and also look at different algorithms to place and join rooms.</p>
+
+<video controls>
+    <source src="./manuelneuersweeperkeeper.mp4" type="video/mp4">
+</video>
+
+</p>
+<h2 id="example">example</h2>
+<h2 id="tests">tests</h2>
+<h2 id="png-cairo-trait">PNG/cairo - trait</h2>
+<h2 id="web-service">Web service</h2>
+<h2 id="wasm">Wasm</h2>
+<h2 id="video">video</h2>
+<p>ffmpeg -framerate 10 -i img/%02d.png -pix_fmt yuv420p output.mp4</p>
+<p>-pix_fmt yuv420p is for quicktime compat<br>add draw calls through level gen<br>rename images to 01.png etc</p>
