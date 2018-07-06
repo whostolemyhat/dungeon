@@ -11,6 +11,8 @@ Here's an example level created:
 
 ![](manuelneuersweeperkeeper.png)
 
+The final code [can be found on Github](https://github.com/whostolemyhat/dungeon-procgen-1).
+
 ## Setup
 You'll need to [install Rust](https://www.rust-lang.org/en-US/) - this tutorial uses version `1.27.0`. Once installed, create a binary project with Cargo:
 
@@ -478,6 +480,8 @@ When run, we now have rooms!
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 ```
+
+![](./justrooms.png)
 
 ## Seedable
 If you run the programme several times, you'll notice that the layout changes each time. When using procedural generation, it's nice to have reproducible output so you can re-use levels you like. The way we do this is by using a seedable random number generator, which will produce the same random numbers when given the same initial value. This means that every time we use the same seed, we'll get the same level out, which is how things like the Spelunky daily challenges work - everyone gets the same seed which generates the same levels.
@@ -1394,6 +1398,7 @@ That's it! There are a few things you could play around with, such as the size o
     <source src="./manuelneuersweeperkeeper.mp4" type="video/mp4">
 </video>
 
+The final code [can be found on Github](https://github.com/whostolemyhat/dungeon-procgen-1).
 
 ## example
 ## tests

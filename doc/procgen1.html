@@ -1,29 +1,26 @@
 <h1 id="procedural-level-generation-with-rust">Procedural level generation with Rust</h1>
-<ul>
-<li><p>what is procgen<br>Procedural generation is a technique which allows content to be created programmatically, rather than everything in a game being specifically placed by a designer. Procedural generation doesn&#39;t mean randomised, rather that</p>
-</li>
-<li><p>what is this article about<br>This tutorial will show how to create a tilemap-based level with rooms connected by straight corridors, using <a href="https://www.rust-lang.org/en-US/">Rust</a>. We&#39;ll also cover how to use seeds to reproduce specific layouts and serialise the output into JSON.</p>
-</li>
-</ul>
+<p>Procedural generation is a technique which allows content to be created programmatically, rather than everything in a game being specifically placed by a designer. Procedural generation doesn&#39;t mean completely randomised, rather randomised elements are used as long as they make sense.</p>
+<p>This tutorial will show how to create a tilemap-based level with rooms connected by straight corridors, using <a href="https://www.rust-lang.org/en-US/">Rust</a>. We&#39;ll also cover how to use seeds to reproduce specific layouts and serialise the output into JSON. The rooms will be placed at random within the level, and corridors are drawn horizontally and vertically to connect the centres of the rooms.</p>
+<p>Here&#39;s an example level created:</p>
 
 <video controls>
     <source src="./levelgen.mp4" type="video/mp4">
 </video>
 
-</p>
-<p>Here&#39;s an image of a layout created from this article:<br><img src="manuelneuersweeperkeeper.png" alt=""></p>
+<p><img src="manuelneuersweeperkeeper.png" alt=""></p>
+<p>The final code <a href="https://github.com/whostolemyhat/dungeon-procgen-1">can be found on Github</a>.</p>
 <h2 id="setup">Setup</h2>
 <p>You&#39;ll need to <a href="https://www.rust-lang.org/en-US/">install Rust</a> - this tutorial uses version <code>1.27.0</code>. Once installed, create a binary project with Cargo:</p>
 <p><code>cargo new dungeon --bin</code></p>
 <p>Once created, change into the new folder and run the project to check everything&#39;s ok:</p>
-<pre><code>cd dungeon
+<pre class="language-rust"><code class="language-rust">cd dungeon
 cargo run
 
 // =&gt; &quot;Hello world!&quot;
 </code></pre><p>After compiling, the project should print out &quot;Hello world!&quot; - this is the default boilerplate for projects set up with Cargo.</p>
 <h2 id="create-the-board">Create the board</h2>
 <p>The first step is to create the tilemap which will keep track of empty space and rooms in our level. In <code>src/main.rs</code> we&#39;ll create a struct to hold this data:</p>
-<pre><code>// main.rs
+<pre class="language-rust"><code class="language-rust">// main.rs
 
 #[derive(Debug)]
 struct Level {
@@ -54,10 +51,10 @@ fn main() {
     println!(&quot;{:?}&quot;, level);
 }
 </code></pre><p>When run, this will give you the &quot;Hello world!&quot; phrase, followed by the level, which at the moment is just loads and loads of zeros:</p>
-<pre><code>Hello, world!
+<pre class="language-rust"><code class="language-rust">Hello, world!
 Level { width: 10, height: 8, board: [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]] }
 </code></pre><p>The <code>Level</code> struct is pretty basic for now:</p>
-<pre><code>#[derive(Debug)]
+<pre class="language-rust"><code class="language-rust">#[derive(Debug)]
 struct Level {
     width: i32,
     height: i32,
@@ -67,7 +64,7 @@ struct Level {
 <p>We&#39;re using a two-dimensional array (ie an array containing arrays) to represent the map (<code>board</code> in the struct). Zero means an empty space, so when we initialise the map everything is empty; rooms and corridors will use ones when we add them. Each array inside <code>board</code> represents a row, and each entry in that array represents a position in that row. For instance, the co-ordinate (8, 6) would be <code>board[6][8]</code> in our struct - the <code>y</code> co-ordinate (6) becomes the first slice parameter to get the row array, then we use the <code>x</code> co-ordinate (8) to get the appropriate item.</p>
 <p>You can also use a single-dimension array as the board - there are no nested arrays, so you can directly access each position on the board. This is faster than using a two-dimensional array, but comes at the cost of being slightly less clear, so we&#39;ll use the two-dimensional array for now.</p>
 <p>We&#39;ve also added a <code>new</code> function to the <code>Level</code> struct:</p>
-<pre><code>impl Level {
+<pre class="language-rust"><code class="language-rust">impl Level {
     fn new(width: i32, height: i32) -&gt; Self {
         let mut board = Vec::new();
         for _ in 0..height {
@@ -83,11 +80,11 @@ struct Level {
     }
 }
 </code></pre><p>This sets the width and height properties of the struct, and creates a vector for each row:</p>
-<pre><code>let row = vec![0; width as usize];
+<pre class="language-rust"><code class="language-rust">let row = vec![0; width as usize];
 </code></pre><p>Each row is set to contain <code>width</code> number of elements, all set to <code>0</code>; all these rows are then added to the <code>board</code> vector and added to the <code>Level</code> struct. In Rust, vectors are growable arrays which adds a bit of overhead since they need to be able to resize. If we had a static size for the board, so we didn&#39;t have <code>width</code> and <code>height</code> in the <code>Level</code> struct, then we could use an array for the board instead of a Vector. Since we&#39;re dynamically creating the board size from the width and height, we&#39;ll need to use a vector instead.</p>
 <h2 id="display">Display</h2>
 <p>The <code>#[derive(Debug)]</code> lets us print out the contents of our level, but this is a bit of a mess at the moment with a single line of zeroes. To allow custom formatting, we need to derive the <code>Display</code> trait on <code>Level</code> so we can print out a nice map. The <code>Display</code> trait is pretty simple: we just need to provide a <code>fmt</code> function in an implementation block for our struct, and in the function we can print out whatever we like.</p>
-<pre><code>use std::fmt;
+<pre class="language-rust"><code class="language-rust">use std::fmt;
 
 struct Level {
     ...
@@ -116,7 +113,7 @@ fn main() {
 }
 </code></pre><p>In the <code>fmt</code> function, we&#39;re looping through each entry in the board and printing out the <code>{:?}</code> debug string, since each entry is an integer, along with a space, and for each row array we add a line break. Also notice that in <code>main</code> the println has changed from <code>{:?}</code> to <code>{}</code> - the former is for debug printing, and the latter uses our new <code>Display</code> formatting.</p>
 <p>Run this code, and the level should look a bit nicer:</p>
-<pre><code>0 0 0 0 0 0 0 0 0 0
+<pre class="language-rust"><code class="language-rust">0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0
@@ -127,7 +124,7 @@ fn main() {
 </code></pre><h2 id="room">Room</h2>
 <p>Right, it looks nicer now, but is very boring. Let&#39;s do the fun bit, and add some rooms to our map!</p>
 <p>Create <code>src/room.rs</code> and add the following:</p>
-<pre><code>// room.rs
+<pre class="language-rust"><code class="language-rust">// room.rs
 
 pub struct Room {
     pub x: i32,
@@ -159,7 +156,7 @@ impl Room {
 </code></pre><p>The <code>Room</code> struct contains the points of the room&#39;s rectangle, along with its&#39; width, height and centre point. The <code>new</code> function saves us having to calculate the points and centre when we call it, and the <code>intersects</code> function will be used when placing rooms to make sure the rooms aren&#39;t overlapping.</p>
 <h3 id="refactor-level">Refactor Level</h3>
 <p>Before we start using <code>Room</code>, let&#39;s tidy up the <code>Level</code> struct. Create <code>src/level.rs</code> and move all the level-related code into it; update <code>struct Level</code> to <code>pub struct level</code> and <code>fn new</code> to <code>pub fn new</code>:</p>
-<pre><code>// level.rs
+<pre class="language-rust"><code class="language-rust">// level.rs
 use std::fmt;
 
 pub struct Level {
@@ -198,7 +195,7 @@ impl fmt::Display for Level {
 }
 </code></pre><p>The <code>pub</code> annotations allow the struct to be used in other files in our project, otherwise we&#39;d have errors when trying to run the project.</p>
 <p>Update <code>main.rs</code> to declare and use <code>Level</code>:</p>
-<pre><code>// main.rs
+<pre class="language-rust"><code class="language-rust">// main.rs
 mod level;
 
 use level::Level;
@@ -209,23 +206,23 @@ fn main() {
 }
 </code></pre><p><code>mod level</code> declares the level module, then <code>use level::Level</code> imports the struct into the main file. Compile and run again to check that everthing&#39;s still working with <code>cargo run</code> - you should see the board again.</p>
 <p>Let&#39;s actually add rooms now! First of all, we need to add the <code>rand</code> crate to our project; this provides random-number functionality which we can use to get different-sized rooms. In <code>Cargo.toml</code>, add <code>rand = &quot;0.5&quot;</code> under the <code>[dependencies]</code>:</p>
-<pre><code># Cargo.toml
+<pre class="language-rust"><code class="language-rust"># Cargo.toml
 
 [dependencies]
 rand = &quot;0.5&quot;
 </code></pre><p>We now need to declare that we&#39;re using this crate in <code>main.rs</code> - at the top of the file, add <code>extern crate rand;</code>:</p>
-<pre><code>// main.rs
+<pre class="language-rust"><code class="language-rust">// main.rs
 extern crate rand;
 ...
 </code></pre><p>And in <code>level.rs</code> we add a <code>use</code> statement so it gets imported:</p>
-<pre><code>// level.rs
+<pre class="language-rust"><code class="language-rust">// level.rs
 use rand;
 use rand::prelude::*;
 use std::fmt;
 ...
 </code></pre><p>Run <code>cargo run</code> - this will download and compile the <code>rand</code> crate, then print out exactly the same board as before. The <code>use rand::prelude::*</code> statement imports standard traits and functions from the rand crate - this is a shortcut to having to know exactly which imports you want and listing them all out.</p>
 <p>We now need to add a vector to the level to track rooms - this will be used to make sure that no rooms overlap - and add a function which places them.</p>
-<pre><code>// level.rs
+<pre class="language-rust"><code class="language-rust">// level.rs
 use std::fmt;
 use rand;
 use rand::prelude::*;
@@ -334,14 +331,14 @@ impl fmt::Display for Level {
 }
 
 </code></pre><p>You&#39;ll notice that the <code>self.rooms.push(*room)</code> throws an error - this is because we only have a reference to <code>room</code> (ie it&#39;s passed to <code>add_room</code> as <code>&amp;Room</code>) so we can&#39;t move the struct itself into our <code>rooms</code> array. We could change the parameter to remove the borrow (ie <code>fn add_room(&amp;mut self, room: Room)</code>), but this will make things a bit hairy later on when we need to use the room data again. Instead, we can derive the Copy trait on <code>Room</code> so that the <code>rooms</code> vector has a copy of the room instead of the original struct:</p>
-<pre><code>// room.rs
+<pre class="language-rust"><code class="language-rust">// room.rs
 #[derive(Clone, Copy)]
 pub struct Room {
     ...
 }
 </code></pre><p>The Copy trait requires the Clone trait to be satisfied, so we add both to the room.</p>
 <p>Finally, we need to actually call our new function - update <code>main</code> to place rooms:</p>
-<pre><code>extern crate rand;
+<pre class="language-rust"><code class="language-rust">extern crate rand;
 
 mod room;
 mod level;
@@ -354,7 +351,7 @@ fn main() {
     println!(&quot;{}&quot;, level);
 }
 </code></pre><p>When run, we now have rooms!</p>
-<pre><code>0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
+<pre class="language-rust"><code class="language-rust">0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 0 0 0 0
@@ -394,19 +391,20 @@ fn main() {
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-</code></pre><h2 id="seedable">Seedable</h2>
+</code></pre><p><img src="./justrooms.png" alt=""></p>
+<h2 id="seedable">Seedable</h2>
 <p>If you run the programme several times, you&#39;ll notice that the layout changes each time. When using procedural generation, it&#39;s nice to have reproducible output so you can re-use levels you like. The way we do this is by using a seedable random number generator, which will produce the same random numbers when given the same initial value. This means that every time we use the same seed, we&#39;ll get the same level out, which is how things like the Spelunky daily challenges work - everyone gets the same seed which generates the same levels.</p>
 <p>The <code>rand</code> crate provides this functionality, so we all we need to do is change where the type of random number generator, and make sure we use the same one throughout the code.</p>
 <p>I&#39;ve found the <code>SeedableRng</code> provided by the <code>rand</code> crate to be a bit picky in what it accepts as a seed, so we&#39;ll add a couple of crates to help create a seed in the correct format.</p>
 <p>In Cargo.toml, add <code>sha2</code> and <code>arrayref</code> crates:</p>
-<pre><code># Cargo.toml
+<pre class="language-rust"><code class="language-rust"># Cargo.toml
 [dependencies]
 arrayref = &quot;0.3.4&quot;
 rand = &quot;0.5&quot;
 sha2 = &quot;0.7.1&quot;
 </code></pre><p><code>SeedableRng</code> requires an array of 32 <code>u8</code> items, so these crates will help us turn a string of text into the appropriate format. <code>Sha2</code> provides hash functions, so we can use this to turn a string of any length into a string 64 characters long; <code>arrayref</code> provides a macro to turn a string&#39;s bytes into the format required by <code>SeedableRng</code> because it can&#39;t accept String::as_bytes directly.</p>
 <p>In <code>main.rs</code>, we need to declare the crates and use them, then set up the hash to pass into the random number generator:</p>
-<pre><code>// main.rs
+<pre class="language-rust"><code class="language-rust">// main.rs
 extern crate rand;
 
 // import crates
@@ -450,7 +448,7 @@ fn main() {
     println!(&quot;{}&quot;, level);
 }
 </code></pre><p>And then tweak <code>level.rs</code> so <code>place_rooms</code> takes <code>rng</code> as a parameter</p>
-<pre><code>use std::fmt;
+<pre class="language-rust"><code class="language-rust">use std::fmt;
 // removed use rand;
 use rand::prelude::*;
 use room::Room;
@@ -465,7 +463,7 @@ pub fn place_rooms(&amp;mut self, rng: &amp;mut StdRng) {
 </code></pre><p>Run the project again - <code>cargo run</code> - Cargo will download the crates then compile the project. You should now see the same map every time you run the project - try changing the hash string for different maps.</p>
 <h3 id="full-listing">Full listing</h3>
 <h4 id="main-rs">main.rs</h4>
-<pre><code>extern crate rand;
+<pre class="language-rust"><code class="language-rust">extern crate rand;
 extern crate sha2;
 #[macro_use]
 extern crate arrayref;
@@ -493,7 +491,7 @@ fn main() {
     println!(&quot;{}&quot;, level);
 }
 </code></pre><h4 id="level-rs">level.rs</h4>
-<pre><code>use std::fmt;
+<pre class="language-rust"><code class="language-rust">use std::fmt;
 use rand::prelude::*;
 use room::Room;
 
@@ -585,7 +583,7 @@ impl fmt::Display for Level {
     }
 }
 </code></pre><h4 id="room-rs">room.rs</h4>
-<pre><code>#[derive(Clone, Copy)]
+<pre class="language-rust"><code class="language-rust">#[derive(Clone, Copy)]
 pub struct Room {
     pub x: i32,
     pub y: i32,
@@ -616,7 +614,7 @@ impl Room {
 </code></pre><h2 id="refactor-using-enums">Refactor using Enums</h2>
 <p>At the moment, we&#39;ve got a few magic numbers floating around - <code>0</code> for empty spaces, and <code>1</code> for rooms, so before we add more of them with corridors, let&#39;s tidy those up. We&#39;ll create an enum for tile types which we&#39;ll use instead of numbers, and implement the Display trait so they still show up as zeroes and ones. Even though we only have two types of tiles at the moment, using an enum makes it easy to extend - we could add doors or pits of lava - and see which tile is being used in each function.</p>
 <p>In <code>level.rs</code>, create a new Tile enum:</p>
-<pre><code>#[derive(Clone)]
+<pre class="language-rust"><code class="language-rust">#[derive(Clone)]
 pub enum Tile {
     Empty,
     Walkable
@@ -632,7 +630,7 @@ impl fmt::Display for Tile {
 }
 </code></pre><p>We define two variations in the <code>Tile</code> enum, <code>Empty</code> and <code>Walkable</code> which will represent empty areas and rooms/corridors respectively. The Display trait simply checks which tile variation is currently being printed, then prints a string of &quot;0&quot; or &quot;1&quot; - this will mean we can drop this replacement in and see the same map as before.</p>
 <p>Update the <code>Level</code> implementation to use the enum:</p>
-<pre><code>// level.rs
+<pre class="language-rust"><code class="language-rust">// level.rs
 pub struct Level {
     width: i32,
     height: i32,
@@ -689,7 +687,7 @@ impl fmt::Display for Level {
 <h2 id="corridors">Corridors</h2>
 <p>Let&#39;s connect our rooms together so it&#39;s more of a useful dungeon. The procedure for adding corridors is going to be very basic - we&#39;ll loop through all the rooms in the level, and connect the centre point of each pair with vertical and horizontal lines.</p>
 <p>To make the corridor functions a bit more readable, we&#39;ll change the Room struct&#39;s <code>centre</code> from a tuple into a struct - this will allow us to name the centre point&#39;s co-ordinates so we can access them via <code>centre.x</code>/<code>centre.y</code> rather than <code>centre.0</code>/<code>centre.1</code>.</p>
-<pre><code>// room.rs
+<pre class="language-rust"><code class="language-rust">// room.rs
 
 #[derive(Debug, Clone, Copy)]
 pub struct Point {
@@ -715,7 +713,7 @@ impl Room {
     }
     ...
 </code></pre><p>That&#39;s the last bit of refactoring for now, promise! Right, update the Level <code>impl</code> block in <code>level.rs</code> with three functions:</p>
-<pre><code>// level.rs
+<pre class="language-rust"><code class="language-rust">// level.rs
 ...
 
 impl Level {
@@ -765,7 +763,7 @@ impl Level {
     }
 }
 </code></pre><p>and update <code>main.rs</code> to call <code>place_corridors</code>:</p>
-<pre><code>// main.rs
+<pre class="language-rust"><code class="language-rust">// main.rs
 ...
 fn main() {
     let hash = create_hash(&quot;manuelneuersweeperkeeper&quot;);
@@ -780,19 +778,19 @@ fn main() {
 </code></pre><p>If you run the project again, you&#39;ll see we&#39;ve connected the rooms with corridors.</p>
 <h3 id="corridor-placement">Corridor placement</h3>
 <p>Let&#39;s go into a bit more detail about the corridor placement.</p>
-<pre><code>pub fn place_corridors(&amp;mut self, rng: &amp;mut StdRng) {
+<pre class="language-rust"><code class="language-rust">pub fn place_corridors(&amp;mut self, rng: &amp;mut StdRng) {
     for i in 0..(self.rooms.len() - 1) {
         let room = self.rooms[i];
         let other = self.rooms[i + 1];
 </code></pre><p>As with the <code>place_rooms</code> function, we pass in the seeded random number generator so that the placement is repeatable with the same seed. We then start going through each room that&#39;s been placed in the level as a pair, starting with the first and second. The next loop will pick the second and third, then the third and fourth, and so on; once we get to the second-to-last and last then that&#39;s the final loop. This means that the last room won&#39;t connect with the first room - this could be changed by checking if we&#39;re at the last element then using the first room as <code>other</code>.</p>
-<pre><code>match rng.gen_range(0, 2) {
+<pre class="language-rust"><code class="language-rust">match rng.gen_range(0, 2) {
     0 =&gt; {},
     _ =&gt; {},
 }
 </code></pre><p>Next, we decide whether to start with a horizontal or vertical corridor between rooms. This adds a bit of variety to the corridors, since we don&#39;t want every corridor to always start horizontally. The range is between 0 and 2 since <code>gen_range</code> includes the lower bound (0) but excludes the upper (2), and we want a fifty-fifty split.</p>
 <p>The <code>horz_corridor</code> and <code>vert_corridor</code> are very simple functions - they simply create a straight line of walkable tiles between two points. The line goes from the centre point of the first room all the way to the centre point of the next room, at which point the opposite corridor function is called to join the corridors together. The <code>room.centre.x &lt;= other.centre.x</code> checks before the corridor function calls are because ranges in Rust - 0..x - will only work with positive numbers, so we need to make sure the first parameter is the room with the smallest centre co-ordinate (<code>x</code> or <code>y</code> depending on whether its horizontal or vertical).</p>
 <p>Running the project again should now give you a map with several rooms connected with corridors!</p>
-<pre><code>0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+<pre class="language-rust"><code class="language-rust">0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
@@ -836,7 +834,7 @@ fn main() {
 <h2 id="json">JSON</h2>
 <p>We can print the map out in the console, but it&#39;s not much use there. We can convert the level into JSON so it can be exported and used in a game using <code>serde</code>.</p>
 <p>In <code>Cargo.toml</code>, add <code>serde</code>, <code>serde_json</code> and <code>serde_derive</code>:</p>
-<pre><code># Cargo.toml
+<pre class="language-rust"><code class="language-rust"># Cargo.toml
 
 [dependencies]
 arrayref = &quot;0.3.4&quot;
@@ -847,14 +845,14 @@ serde_derive = &quot;1.0.68&quot;
 serde_json = &quot;1.0.22&quot;
 </code></pre><p><code>serde</code> is a serialisation and deserialisation crate which contains the core functions, while <code>serde_json</code> is specifically for converting JSON data. <code>serde_derive</code> is an incredibly useful crate which allows most Rust data structures to be automatically converted by deriving the <code>Serialize</code> or <code>Deserialize</code> traits.</p>
 <p>In <code>main.rs</code>, import the crates:</p>
-<pre><code>// main.rs
+<pre class="language-rust"><code class="language-rust">// main.rs
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 ...
 </code></pre><p>Then we need to derive <code>Serialize</code> on our structs so we can convert the level into JSON.</p>
-<pre><code>// level.rs
+<pre class="language-rust"><code class="language-rust">// level.rs
 ...
 #[derive(Clone, Serialize)]
 pub enum Tile {
@@ -866,7 +864,7 @@ pub enum Tile {
 #[derive(Serialize)]
 pub struct Level {
     ...
-</code></pre><pre><code>// room.rs
+</code></pre><pre class="language-rust"><code class="language-rust">// room.rs
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Point {
     pub x: i32,
@@ -878,7 +876,7 @@ pub struct Room {
     ...
 </code></pre><p>We have to add <code>Serialize</code> to all the structs used by <code>Level</code> to be able to serialise it completely: <code>Tile</code> and <code>Room</code> are used directly in <code>Level</code>, and <code>Point</code> is used in <code>Room</code>. If you leave one of those out, you&#39;ll see an error message complaining that the Serialize trait is not satisfied, so you should be able to track down everything you need to mark as serialisable. Primitive types, like i32, are already implemented in serde, so we don&#39;t need to do anything extra with the level&#39;s width or height properties.</p>
 <p>Once this is done, update <code>main.rs</code> again to actually serialise the level and print it out:</p>
-<pre><code>// main.rs
+<pre class="language-rust"><code class="language-rust">// main.rs
 
 fn main() {
     let hash = create_hash(&quot;manuelneuersweeperkeeper&quot;);
@@ -894,14 +892,14 @@ fn main() {
     println!(&quot;{:?}&quot;, serialised);
 }
 </code></pre><p>Run the project again, and...</p>
-<pre><code>&quot;{\&quot;width\&quot;:48,\&quot;height\&quot;:40,\&quot;board\&quot;:[[\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;],[\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,
+<pre class="language-rust"><code class="language-rust">&quot;{\&quot;width\&quot;:48,\&quot;height\&quot;:40,\&quot;board\&quot;:[[\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;],[\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Walkable\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,\&quot;Empty\&quot;,
 ... snip ...
 ]],\&quot;rooms\&quot;:[{\&quot;x\&quot;:35,\&quot;y\&quot;:25,\&quot;x2\&quot;:42,\&quot;y2\&quot;:32,\&quot;width\&quot;:7,\&quot;height\&quot;:7,\&quot;centre\&quot;:{\&quot;x\&quot;:38,\&quot;y\&quot;:28}},{\&quot;x\&quot;:32,\&quot;y\&quot;:13,\&quot;x2\&quot;:38,\&quot;y2\&quot;:20,\&quot;width\&quot;:6,\&quot;height\&quot;:7,\&quot;centre\&quot;:{\&quot;x\&quot;:35,\&quot;y\&quot;:16}},{\&quot;x\&quot;:1,\&quot;y\&quot;:21,\&quot;x2\&quot;:7,\&quot;y2\&quot;:29,\&quot;width\&quot;:6,\&quot;height\&quot;:8,\&quot;centre\&quot;:{\&quot;x\&quot;:4,\&quot;y\&quot;:25}},{\&quot;x\&quot;:15,\&quot;y\&quot;:1,\&quot;x2\&quot;:22,\&quot;y2\&quot;:10,\&quot;width\&quot;:7,\&quot;height\&quot;:9,\&quot;centre\&quot;:{\&quot;x\&quot;:18,\&quot;y\&quot;:5}},{\&quot;x\&quot;:14,\&quot;y\&quot;:15,\&quot;x2\&quot;:20,\&quot;y2\&quot;:25,\&quot;width\&quot;:6,\&quot;height\&quot;:10,\&quot;centre\&quot;:{\&quot;x\&quot;:17,\&quot;y\&quot;:20}}]}&quot;
 </code></pre><p>Right. Not quite what we had in mind.</p>
 <h3 id="custom-serialisation">Custom serialisation</h3>
 <p>The default serialisation for the <code>Tile</code> enum is just using a string, in this case &quot;Empty&quot; or &quot;Walkable&quot;, which is far from readable. However, it&#39;s easy enough to <a href="https://serde.rs/impl-serialize.html">create our own custom serialisation</a> with Serde - all we need to do is implement it for Tile like we already have with Display, and then we can output whatever we like as JSON.</p>
 <p>In <code>level.rs</code>, remove the <code>Serialize</code> derive tag from <code>Tile</code>, then add a new implementation block:</p>
-<pre><code>// level.rs
+<pre class="language-rust"><code class="language-rust">// level.rs
 use serde::{ Serialize, Serializer };   // add &#39;use&#39; for custom serialisation
 
 #[derive(Clone)]    // remove Serialize
@@ -922,11 +920,11 @@ impl Serialize for Tile {
 
 ...
 </code></pre><p>The <code>serialize</code> function has quite a complicated-looking method signature:</p>
-<pre><code>fn serialize&lt;S&gt;(&amp;self, serializer: S) -&gt; Result&lt;S::Ok, S::Error&gt;
+<pre class="language-rust"><code class="language-rust">fn serialize&lt;S&gt;(&amp;self, serializer: S) -&gt; Result&lt;S::Ok, S::Error&gt;
     where S: Serializer {
 </code></pre><p><code>S</code> is a serialiser of any format - Serde can be for JSON or a number of other formats - so this implementation block is generic: you should be able to add other serialisations without having to change this code. The code in the function is very similar to Tile&#39;s Display implementation: we check the type of the Tile enum, then return a serialised <code>i32</code>, either zero or one, depending on the enum value.</p>
 <p>Run the project again, and this time the serialised output should look much nicer!</p>
-<pre><code>&quot;{
+<pre class="language-rust"><code class="language-rust">&quot;{
     \&quot;width\&quot;:48,
     \&quot;height\&quot;:40,
     \&quot;board\&quot;:[
@@ -982,7 +980,7 @@ impl Serialize for Tile {
 </code></pre><h2 id="changing-hashes">Changing hashes</h2>
 <p>At the moment, to create a new map we have to change the string we&#39;re using to create the hash in <code>main.rs</code>, then recompile the entire project and run it: quite a slow process. Instead, let&#39;s allow a string to be passed to the programme at runtime so we can create new levels without having to re-compile the project every time.</p>
 <p>In <code>main.rs</code>, update the <code>main</code> function to read command-line arguments:</p>
-<pre><code>...
+<pre class="language-rust"><code class="language-rust">...
 use rand::distributions::Alphanumeric;
 ...
 
@@ -1006,12 +1004,12 @@ fn main() {
 }
 </code></pre><p><code>hash</code> is now replaced with a <code>match</code>: <code>std::env::args::nth(1)</code> tries to read the second argument to the programme and if it exists, passes it to the <code>create_hash</code> function. (The second argument is used since the first is the name of the programme). If no argument was passed, we create a random thirty-two character string and pass that to <code>create_hash</code>; whichever path is taken, we set the result back to <code>hash</code> which is then used as the seed.</p>
 <p>Now, if you run the project and pass &quot;manuelneuersweeperkeeper&quot;, you should see the same output as before:</p>
-<pre><code>cargo run manuelneuersweeperkeeper
+<pre class="language-rust"><code class="language-rust">cargo run manuelneuersweeperkeeper
 </code></pre><p>If you just run <code>cargo run</code> then a random string is created and used instead, and you get a different map every time. However, if you like one of the maps it creates, there&#39;s no way to re-use the seed because firstly, we don&#39;t know what the random seed was, and secondly, there&#39;s no way to pass a seed without it being hashed.</p>
 <h3 id="save-hash">Save hash</h3>
 <p>Let&#39;s update the Level struct so we can keep track of the seed used to create the level - that way, when we print the serialised JSON, we can easily retrieve the seed so we can re-create a level.</p>
 <p>In <code>level.rs</code> we need to add a property to store the hash, then update the <code>new</code> function and pass the hash in where we create the level in <code>main.rs</code>.</p>
-<pre><code>// level.rs
+<pre class="language-rust"><code class="language-rust">// level.rs
 ...
 #[derive(Serialize)]
 pub struct Level {
@@ -1040,7 +1038,7 @@ impl Level {
     }
 
 ...
-</code></pre><pre><code>// main.rs
+</code></pre><pre class="language-rust"><code class="language-rust">// main.rs
 
 ...
 fn main() {
@@ -1061,7 +1059,7 @@ fn main() {
     println!(&quot;{:?}&quot;, serialised);
 }
 </code></pre><p>Now when we run the project, the level prints out the hash used to create the level:</p>
-<pre><code>{
+<pre class="language-rust"><code class="language-rust">{
     &quot;width&quot;:48,
     &quot;height&quot;:40,
     &quot;board&quot;:[[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0],[0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]],
@@ -1077,7 +1075,7 @@ fn main() {
 </code></pre><p>However, we still don&#39;t have a way to pass a seed we already have in to our programme, such as when we use a randomised string. Rather than use positional arguments - so assuming the first argument is going to be a string to hash - let&#39;s use a crate to parse command line arguments.</p>
 <h3 id="parse-arguments-with-clap">Parse arguments with Clap</h3>
 <p><a href="https://github.com/kbknapp/clap-rs">Clap</a> is a handy crate which handles reading and parsing arguments to your programme. Add <code>clap = &quot;2.32.0&quot;</code> to <code>Cargo.toml</code>:</p>
-<pre><code># Cargo.toml
+<pre class="language-rust"><code class="language-rust"># Cargo.toml
 ...
 [dependencies]
 arrayref = &quot;0.3.4&quot;
@@ -1088,7 +1086,7 @@ serde = &quot;1.0.68&quot;
 serde_derive = &quot;1.0.68&quot;
 serde_json = &quot;1.0.22&quot;
 </code></pre><p>then update <code>main.rs</code> to handle arguments:</p>
-<pre><code>// main.rs
+<pre class="language-rust"><code class="language-rust">// main.rs
 extern crate clap;
 
 use clap::{ App, Arg };
@@ -1166,12 +1164,4 @@ fn main() {
     <source src="./manuelneuersweeperkeeper.mp4" type="video/mp4">
 </video>
 
-</p>
-<h2 id="example">example</h2>
-<h2 id="tests">tests</h2>
-<h2 id="png-cairo-trait">PNG/cairo - trait</h2>
-<h2 id="web-service">Web service</h2>
-<h2 id="wasm">Wasm</h2>
-<h2 id="video">video</h2>
-<p>ffmpeg -framerate 10 -i img/%02d.png -pix_fmt yuv420p output.mp4</p>
-<p>-pix_fmt yuv420p is for quicktime compat<br>add draw calls through level gen<br>rename images to 01.png etc</p>
+<p>The final code <a href="https://github.com/whostolemyhat/dungeon-procgen-1">can be found on Github</a>.</p>

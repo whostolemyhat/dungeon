@@ -11,6 +11,7 @@ extern crate clap;
 pub mod draw;
 mod level;
 mod room;
+mod bsp;
 
 use sha2::{ Sha256, Digest };
 use rand::prelude::*;
@@ -19,6 +20,7 @@ use clap::{ App, Arg };
 
 use draw::draw;
 use level::Level;
+use bsp::Leaf;
 
 fn create_hash(text: &str) -> String {
     let mut hasher = Sha256::default();
@@ -69,20 +71,52 @@ fn main() {
 
     let seed_u8 = array_ref!(seed.as_bytes(), 0, 32);
     let mut rng: StdRng = SeedableRng::from_seed(*seed_u8);
-    let mut level = Level::new(board_width, board_height, &seed);
+    // let mut level = Level::new(board_width, board_height, &seed);
 
-    level.place_rooms(&mut rng);
-    level.place_corridors(&mut rng);
+    // level.place_rooms(&mut rng);
+    // level.place_corridors(&mut rng);
 
-    println!("{}", level);
+    // println!("{}", level);
 
-    // let serialised = serde_json::to_string(&level).unwrap();
-    // println!("{}", &level.hash);
-    // println!("{}", serialised);
-    draw(&level, "./img", "17").unwrap();
+    // // let serialised = serde_json::to_string(&level).unwrap();
+    // // println!("{}", &level.hash);
+    // // println!("{}", serialised);
+    // draw(&level, "./img", "17").unwrap();
+
+    let mut leaves: Vec<Leaf> = Vec::new();
+    let mut rooms: Vec<Leaf> = Vec::new();
+    let mut root = Leaf::new(0, 0, board_width, board_height);
+    println!("{:?}", &root);
+    let leafs = root.split(&mut rng);
+    rooms.push(leafs.0.unwrap());
+    rooms.push(leafs.1.unwrap());
+    // println!("{:?}", &rooms);
+    // leaves.push(root.left_child.unwrap());
+    // leaves.push(root.right_child.unwrap());
+
+    let max_leaf_size = 20;
+    for mut leaf in rooms {
+        let split_chance = rng.gen_range(0, 4);
+        if leaf.width > max_leaf_size || leaf.height > max_leaf_size || split_chance == 0 {
+            let children = leaf.split(&mut rng);
+            leaves.push(children.0.unwrap());
+            leaves.push(children.1.unwrap());
+        }
+    }
+
+    println!("{:?}", &leaves);
+
+    // create root
+    // split root
+    // add to vec
+    // while vec<leaf> has unsplit, loop through and split
+
 }
 
 // drunkards walk
-// bsp
+// bresenhams line algorithm
+// quadtree
+// grid-based http://roguebasin.roguelikedevelopment.org/index.php?title=Grid_Based_Dungeon_Generator
+// bsp https://gamedevelopment.tutsplus.com/tutorials/how-to-use-bsp-trees-to-generate-game-maps--gamedev-12268
 // grid (gen on top + pick random direction)
-// cellular automata
+// cellular automata https://gamedevelopment.tutsplus.com/tutorials/generate-random-cave-levels-using-cellular-automata--gamedev-9664
