@@ -1,15 +1,17 @@
 // https://gamedevelopment.tutsplus.com/tutorials/how-to-use-bsp-trees-to-generate-game-maps--gamedev-12268
 use rand::{ Rng, StdRng };
+// use std::rc::Rc;
+// use std::cell::Cell;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Leaf {
     min_size: i32,
     x: i32,
     y: i32,
     pub width: i32,
     pub height: i32,
-    // pub left_child: Option<&'a Leaf<'a>>,
-    // pub right_child: Option<&'a Leaf<'a>>,
+    pub left_child: Option<Box<Leaf>>,
+    pub right_child: Option<Box<Leaf>>,
     room: i32,
     // corridors: Vec<i32>
 }
@@ -22,22 +24,41 @@ impl Leaf {
             y,
             width,
             height,
-            // left_child: None,
-            // right_child: None,
+            left_child: None,
+            right_child: None,
             room: 0,
             // corridors: Vec::new()
         }
     }
 
-    pub fn split(&mut self, rng: &mut StdRng) -> (Option<Self>, Option<Self>) {
-        // match self.left_child {
-        //     Some(_) => match self.right_child {
-        //         Some(_) => return false, // already set
-        //         None => (),
-        //     },
-        //     None => ()
-        // };
+    pub fn print(&self) {
+        println!("{:?}", self);
+    }
 
+    fn is_leaf(&self) -> bool {
+        match self.left_child {
+            None => match self.right_child {
+                None => true,
+                Some(_) => false,
+            },
+            Some(_) => false
+        }
+    }
+
+    pub fn generate(mut leaf: Leaf, rng: &mut StdRng) {
+        if leaf.is_leaf() {
+            let max = 10;
+            if leaf.width > max {
+                if leaf.split(rng) {
+                    println!("splitting");
+                    Self::generate(*leaf.left_child.unwrap(), rng);
+                    Self::generate(*leaf.right_child.unwrap(), rng);
+                }
+            }
+        }
+    }
+
+    pub fn split(&mut self, rng: &mut StdRng) -> bool {
         // if width >25% height, split vertically
         // if height >25% width, split horz
         // otherwise random
@@ -58,21 +79,22 @@ impl Leaf {
         };
 
         if max <= self.min_size {
-            // return false;   // too small
-            return (None, None);
+            return false;   // too small
         }
 
-        let split_pos = rng.gen_range(self.min_size, max); // TODO pick random point(min_size, max)
+        let split_pos = rng.gen_range(self.min_size, max);
         if split_horz {
-            (Some(Leaf::new(self.x, self.y, self.width, split_pos)), Some(Leaf::new(self.x, self.y + split_pos, self.width, split_pos)))
-            // self.left_child = Some(Box::new(Leaf::new(self.x, self.y, self.width, split_pos)));
-            // self.right_child = Some(Box::new(Leaf::new(self.x, self.y + split_pos, self.width, self.height - split_pos)));
+            // self.left_child = Some(Leaf::new(self.x, self.y, self.width, split_pos));
+            // self.right_child = Some(Leaf::new(self.x, self.y + split_pos, self.width, split_pos));
+            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, self.width, split_pos)));
+            self.right_child = Some(Box::new(Leaf::new(self.x, self.y + split_pos, self.width, self.height - split_pos)));
         } else {
-            (Some(Leaf::new(self.x, self.y, split_pos, self.height)), Some(Leaf::new(self.x + split_pos, self.y, self.width - split_pos, self.height)))
-            // self.left_child = Some(Box::new(Leaf::new(self.x, self.y, split_pos, self.height)));
-            // self.right_child = Some(Box::new(Leaf::new(self.x + split_pos, self.y, self.width - split_pos, self.height)));
+            // self.left_child = Some(Leaf::new(self.x, self.y, split_pos, self.height));
+            // self.right_child = Some(Leaf::new(self.x + split_pos, self.y, self.width - split_pos, self.height));
+            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, split_pos, self.height)));
+            self.right_child = Some(Box::new(Leaf::new(self.x + split_pos, self.y, self.width - split_pos, self.height)));
         }
 
-        // true
+        true
     }
 }
