@@ -4,7 +4,7 @@ use std::fmt;
 use room::Room;
 use draw::draw;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Tile {
     Empty,
     Walkable

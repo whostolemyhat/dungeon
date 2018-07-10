@@ -20,7 +20,7 @@ use clap::{ App, Arg };
 
 use draw::draw;
 use level::Level;
-use bsp::Leaf;
+use bsp::{ Leaf, BspLevel };
 
 fn create_hash(text: &str) -> String {
     let mut hasher = Sha256::default();
@@ -83,12 +83,11 @@ fn main() {
     // // println!("{}", serialised);
     // draw(&level, "./img", "17").unwrap();
 
-    let mut root = Leaf::new(0, 0, board_width, board_height);
-    root.generate(&mut rng);
-    println!("{:?}", root);
-
-
-
+    let root = BspLevel::new(board_width, board_height, &seed, &mut rng);
+    // let mut root = Leaf::new(0, 0, board_width, board_height);
+    // root.generate(&mut rng);
+    // root.create_rooms(&mut rng);
+    println!("{}", root);
 }
 
 // drunkards walk
