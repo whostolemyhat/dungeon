@@ -18,24 +18,33 @@ pub struct BspLevel {
 
 impl BspLevel {
     pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng) -> Self {
+
+        let mut root = Leaf::new(0, 0, width, height, 8);
+        root.generate(rng);
+
+        let mut rooms = vec![];
+        root.create_rooms(rng, &mut rooms);
+
+        let mut corridors = vec![];
+        root.create_corridors(rng, &mut corridors);
+
         let mut level = BspLevel {
             tile_size: 16,
             width,
             height,
             board: vec![Tile::Empty; (height * width) as usize],
-            rooms: Vec::new(),
+            rooms: vec![],
             hash: hash.clone(),
-            leaves: Leaf::new(0, 0, width, height)
+            leaves: root
         };
 
-        level.leaves.generate(rng);
-
-        let mut rooms = vec![];
-        level.leaves.create_rooms(rng, &mut rooms);
-
-        // level.rooms = rooms;
         for room in rooms {
             level.add_room(&room);
+        }
+
+        for corridor in corridors {
+            println!("{:?}", corridor);
+            level.add_room(&corridor);
         }
 
         level
@@ -46,7 +55,6 @@ impl BspLevel {
     }
 
     fn add_room(&mut self, room: &Room) {
-        // TODO check bounds
         for row in 0..room.height {
             for col in 0..room.width {
                 let y = room.y + row;
@@ -85,13 +93,13 @@ pub struct Leaf {
     pub left_child: Option<Box<Leaf>>,
     pub right_child: Option<Box<Leaf>>,
     room: Option<Room>,
-    // corridors: Vec<i32>
+    // corridors: Vec<Room>
 }
 
 impl Leaf {
-    pub fn new(x: i32, y: i32, width: i32, height: i32) -> Self {
+    pub fn new(x: i32, y: i32, width: i32, height: i32, min_size: i32) -> Self {
         Leaf {
-            min_size: 8,
+            min_size,
             x,
             y,
             width,
@@ -115,12 +123,9 @@ impl Leaf {
 
     pub fn generate(&mut self, rng: &mut StdRng) {
         if self.is_leaf() {
-            let max = 10;
-            if self.width > max {
-                if self.split(rng) {
-                    self.left_child.as_mut().unwrap().generate(rng);
-                    self.right_child.as_mut().unwrap().generate(rng);
-                }
+            if self.split(rng) {
+                self.left_child.as_mut().unwrap().generate(rng);
+                self.right_child.as_mut().unwrap().generate(rng);
             }
         }
     }
@@ -151,11 +156,11 @@ impl Leaf {
 
         let split_pos = rng.gen_range(self.min_size, max);
         if split_horz {
-            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, self.width, split_pos)));
-            self.right_child = Some(Box::new(Leaf::new(self.x, self.y + split_pos, self.width, self.height - split_pos)));
+            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, self.width, split_pos, self.min_size)));
+            self.right_child = Some(Box::new(Leaf::new(self.x, self.y + split_pos, self.width, self.height - split_pos, self.min_size)));
         } else {
-            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, split_pos, self.height)));
-            self.right_child = Some(Box::new(Leaf::new(self.x + split_pos, self.y, self.width - split_pos, self.height)));
+            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, split_pos, self.height, self.min_size)));
+            self.right_child = Some(Box::new(Leaf::new(self.x + split_pos, self.y, self.width - split_pos, self.height, self.min_size)));
         }
 
         true
@@ -171,9 +176,12 @@ impl Leaf {
             None => ()
         };
 
+        let min_room_width = 3;
+        let min_room_height = 3;
+
         if self.is_leaf() {
-            let width = rng.gen_range(3, self.width);
-            let height = rng.gen_range(3, self.height);
+            let width = rng.gen_range(min_room_width, self.width);
+            let height = rng.gen_range(min_room_height, self.height);
             let x = rng.gen_range(0, self.width - width);
             let y = rng.gen_range(0, self.height - height);
 
@@ -181,4 +189,77 @@ impl Leaf {
             rooms.push(self.room.unwrap());
         }
     }
+
+    fn get_room(&self) -> Option<Room> {
+        if self.is_leaf() {
+            return self.room;
+        }
+
+        // TODO better way of doing this
+        if let Some(ref room) = self.left_child {
+            return room.get_room();
+        }
+
+        if let Some(ref room) = self.right_child {
+            return room.get_room();
+        }
+
+        None
+    }
+
+    fn create_corridors(&mut self, rng: &mut StdRng, corridors: &mut Vec<Room>) {
+        if let Some(left_room) = self.left_child.as_mut().unwrap().get_room() {
+            if let Some(right_room) = self.right_child.as_mut().unwrap().get_room() {
+                // pick point in each room
+                let left_point = (rng.gen_range(left_room.x, left_room.x + left_room.width), rng.gen_range(left_room.y, left_room.y + left_room.height));
+                let right_point = (rng.gen_range(right_room.x, right_room.x + right_room.width), rng.gen_range(right_room.y, right_room.y + right_room.height));
+                // start at the left-most point
+                println!("about to add corridor {:?} {:?}", left_point, right_point);
+
+                // let width = left_point.0 - right_point.0;
+                // let height = left_point.1 - right_point.1;
+                match rng.gen_range(0, 2) {
+                    0 => {
+                        match left_point.0 <= right_point.0 {
+                            true => corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0, right_point.1)),
+                            false => corridors.push(horz_corridor(right_point.0, right_point.1, left_point.0, left_point.1))
+                        }
+                        match left_point.1 <= right_point.1 {
+                            true => corridors.push(vert_corridor(left_point.0, left_point.1, right_point.0, right_point.1)),
+                            false => corridors.push(vert_corridor(right_point.0, right_point.1, left_point.0, left_point.1))
+                        }
+                    }
+                    _ => {
+                        match left_point.1 <= right_point.1 {
+                            true => corridors.push(vert_corridor(left_point.0, left_point.1, right_point.0, right_point.1)),
+                            false => corridors.push(vert_corridor(right_point.0, right_point.1, left_point.0, left_point.1))
+                        }
+                        match left_point.0 <= right_point.0 {
+                            true => corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0, left_point.1)),
+                            false => corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0, right_point.1))
+                        }
+                    }
+                }
+                // move vertically
+                // move horz
+            }
+        }
+    }
+}
+
+
+fn horz_corridor(start_x: i32, start_y: i32, end_x: i32, end_y: i32) -> Room {
+    // for col in start_x..end_x + 1 {
+    //     let pos = self.get_tile_coords(col, y);
+    //     self.board[pos] = Tile::Walkable;
+    // }
+    Room::new(start_x, start_y, end_x - start_x, 1)
+}
+
+fn vert_corridor(start_x: i32, start_y: i32, end_x: i32, end_y: i32) -> Room {
+    // for row in start_y..end_y + 1 {
+    //     let pos = self.get_tile_coords(x, row);
+    //     self.board[pos] = Tile::Walkable;
+    // }
+    Room::new(start_x, start_y, 1, end_y - start_y)
 }
