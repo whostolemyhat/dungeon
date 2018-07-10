@@ -31,10 +31,6 @@ impl Leaf {
         }
     }
 
-    pub fn print(&self) {
-        println!("{:?}", self);
-    }
-
     fn is_leaf(&self) -> bool {
         match self.left_child {
             None => match self.right_child {
@@ -45,14 +41,13 @@ impl Leaf {
         }
     }
 
-    pub fn generate(mut leaf: Leaf, rng: &mut StdRng) {
-        if leaf.is_leaf() {
+    pub fn generate(&mut self, rng: &mut StdRng) {
+        if self.is_leaf() {
             let max = 10;
-            if leaf.width > max {
-                if leaf.split(rng) {
-                    println!("splitting");
-                    Self::generate(*leaf.left_child.unwrap(), rng);
-                    Self::generate(*leaf.right_child.unwrap(), rng);
+            if self.width > max {
+                if self.split(rng) {
+                    self.left_child.as_mut().unwrap().generate(rng);
+                    self.right_child.as_mut().unwrap().generate(rng);
                 }
             }
         }

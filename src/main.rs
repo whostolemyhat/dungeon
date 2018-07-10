@@ -83,35 +83,11 @@ fn main() {
     // // println!("{}", serialised);
     // draw(&level, "./img", "17").unwrap();
 
-    // let mut leaves: Vec<Leaf> = Vec::new();
-    // let mut rooms: Vec<Leaf> = Vec::new();
-    let root = Leaf::new(0, 0, board_width, board_height);
-    // let leafs = root.split(&mut rng);
-    Leaf::generate(root, &mut rng);
-    root.print();
-    // rooms.push(leafs.0.unwrap());
-    // rooms.push(leafs.1.unwrap());
-    // println!("{:?}", &rooms);
-    // leaves.push(root.left_child.unwrap());
-    // leaves.push(root.right_child.unwrap());
+    let mut root = Leaf::new(0, 0, board_width, board_height);
+    root.generate(&mut rng);
+    println!("{:?}", root);
 
-    // let max_leaf_size = 20;
-    // for mut leaf in rooms {
-    //     let split_chance = rng.gen_range(0, 4);
-    //     if leaf.width > max_leaf_size || leaf.height > max_leaf_size || split_chance == 0 {
-    //         let children = leaf.split(&mut rng);
-    //         leaves.push(children.0.unwrap());
-    //         leaves.push(children.1.unwrap());
-    //     }
-    // }
 
-    // println!("{:?}", root.clone());
-    // root.print();
-
-    // create root
-    // split root
-    // add to vec
-    // while vec<leaf> has unsplit, loop through and split
 
 }
 
