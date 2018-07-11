@@ -264,7 +264,7 @@ fn create_corridors(rng: &mut StdRng, left: Option<Room>, right: Option<Room>, c
 
 fn horz_corridor(start_x: i32, start_y: i32, end_x: i32) -> Room {
     println!("adding horz {:?}", Room::new(start_x, start_y, end_x - start_x, 1));
-    Room::new(start_x, start_y, end_x - start_x, 1)
+    Room::new(start_x, start_y, (end_x - start_x) + 1, 1)
 }
 
 fn vert_corridor(start_x: i32, start_y: i32, end_y: i32) -> Room {
