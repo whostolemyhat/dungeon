@@ -85,7 +85,6 @@ pub struct Leaf {
     pub left_child: Option<Box<Leaf>>,
     pub right_child: Option<Box<Leaf>>,
     room: Option<Room>,
-    // corridors: Vec<Room>
 }
 
 impl Leaf {
@@ -226,22 +225,34 @@ fn create_corridors(rng: &mut StdRng, left: Option<Room>, right: Option<Room>, c
                     println!("path 1 {:?} {:?}", left_point, right_point);
                     match left_point.0 <= right_point.0 {
                         true => corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0)),
-                        false => corridors.push(horz_corridor(right_point.0, right_point.1, left_point.0))
+                        false => corridors.push(horz_corridor(right_point.0, left_point.1, left_point.0))
                     }
                     match left_point.1 <= right_point.1 {
-                        true => corridors.push(vert_corridor(left_point.0, left_point.1, right_point.1)),
+                        true => corridors.push(vert_corridor(right_point.0, left_point.1, right_point.1)),
                         false => corridors.push(vert_corridor(right_point.0, right_point.1, left_point.1))
                     }
                 }
                 _ => {
                     println!("path 2 {:?} {:?}", left_point, right_point);
                     match left_point.1 <= right_point.1 {
-                        true => corridors.push(vert_corridor(left_point.0, left_point.1, right_point.1)),
-                        false => corridors.push(vert_corridor(right_point.0, right_point.1, left_point.1))
+                        true => {
+                            println!("left point true");
+                            corridors.push(vert_corridor(left_point.0, left_point.1, right_point.1))
+                        },
+                        false => {
+                            println!("left point false");
+                            corridors.push(vert_corridor(left_point.0, right_point.1, left_point.1))
+                        }
                     }
                     match left_point.0 <= right_point.0 {
-                        true => corridors.push(horz_corridor(left_point.0, right_point.1, right_point.0)),
-                        false => corridors.push(horz_corridor(right_point.0, left_point.1, left_point.0))
+                        true => {
+                            println!("left 0 true");
+                            corridors.push(horz_corridor(left_point.0, right_point.1, right_point.0))
+                        },
+                        false => {
+                            println!("left 0 false");
+                            corridors.push(horz_corridor(right_point.0, right_point.1, left_point.0))
+                        }
                     }
                 }
             }

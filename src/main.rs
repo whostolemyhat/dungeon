@@ -18,9 +18,9 @@ use rand::prelude::*;
 use rand::distributions::Alphanumeric;
 use clap::{ App, Arg };
 
-use draw::draw;
+use draw::{ draw, draw_bsp };
 use level::Level;
-use bsp::{ Leaf, BspLevel };
+use bsp::{ BspLevel };
 
 fn create_hash(text: &str) -> String {
     let mut hasher = Sha256::default();
@@ -88,6 +88,7 @@ fn main() {
     // root.generate(&mut rng);
     // root.create_rooms(&mut rng);
     println!("{}", root);
+    draw_bsp(&root, "./img", "bsp").unwrap();
 }
 
 // drunkards walk
