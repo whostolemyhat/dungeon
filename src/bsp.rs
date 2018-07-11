@@ -222,7 +222,6 @@ fn create_corridors(rng: &mut StdRng, left: Option<Room>, right: Option<Room>, c
 
             match rng.gen_range(0, 2) {
                 0 => {
-                    println!("path 1 {:?} {:?}", left_point, right_point);
                     match left_point.0 <= right_point.0 {
                         true => corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0)),
                         false => corridors.push(horz_corridor(right_point.0, left_point.1, left_point.0))
@@ -233,26 +232,13 @@ fn create_corridors(rng: &mut StdRng, left: Option<Room>, right: Option<Room>, c
                     }
                 }
                 _ => {
-                    println!("path 2 {:?} {:?}", left_point, right_point);
                     match left_point.1 <= right_point.1 {
-                        true => {
-                            println!("left point true");
-                            corridors.push(vert_corridor(left_point.0, left_point.1, right_point.1))
-                        },
-                        false => {
-                            println!("left point false");
-                            corridors.push(vert_corridor(left_point.0, right_point.1, left_point.1))
-                        }
+                        true => corridors.push(vert_corridor(left_point.0, left_point.1, right_point.1)),
+                        false => corridors.push(vert_corridor(left_point.0, right_point.1, left_point.1))
                     }
                     match left_point.0 <= right_point.0 {
-                        true => {
-                            println!("left 0 true");
-                            corridors.push(horz_corridor(left_point.0, right_point.1, right_point.0))
-                        },
-                        false => {
-                            println!("left 0 false");
-                            corridors.push(horz_corridor(right_point.0, right_point.1, left_point.0))
-                        }
+                        true => corridors.push(horz_corridor(left_point.0, right_point.1, right_point.0)),
+                        false => corridors.push(horz_corridor(right_point.0, right_point.1, left_point.0))
                     }
                 }
             }
@@ -263,11 +249,9 @@ fn create_corridors(rng: &mut StdRng, left: Option<Room>, right: Option<Room>, c
 
 
 fn horz_corridor(start_x: i32, start_y: i32, end_x: i32) -> Room {
-    println!("adding horz {:?}", Room::new(start_x, start_y, end_x - start_x, 1));
     Room::new(start_x, start_y, (end_x - start_x) + 1, 1)
 }
 
 fn vert_corridor(start_x: i32, start_y: i32, end_y: i32) -> Room {
-    println!("adding vert {:?}", Room::new(start_x, start_y, 1, end_y - start_y));
     Room::new(start_x, start_y, 1, end_y - start_y)
 }
