@@ -25,9 +25,6 @@ impl BspLevel {
         let mut rooms = vec![];
         root.create_rooms(rng, &mut rooms);
 
-        let mut corridors = vec![];
-        root.create_corridors(rng, &mut corridors);
-
         let mut level = BspLevel {
             tile_size: 16,
             width,
@@ -40,11 +37,6 @@ impl BspLevel {
 
         for room in rooms {
             level.add_room(&room);
-        }
-
-        for corridor in corridors {
-            println!("{:?}", corridor);
-            level.add_room(&corridor);
         }
 
         level
@@ -179,6 +171,7 @@ impl Leaf {
         let min_room_width = 3;
         let min_room_height = 3;
 
+        // if last level, add a room
         if self.is_leaf() {
             let width = rng.gen_range(min_room_width, self.width);
             let height = rng.gen_range(min_room_height, self.height);
@@ -188,6 +181,12 @@ impl Leaf {
             self.room = Some(Room::new(x + self.x, y + self.y, width, height));
             rooms.push(self.room.unwrap());
         }
+
+        // if there's a left and right child, create a corridor between them
+        match (&self.left_child, &self.right_child) {
+            (Some(left), Some(right)) => create_corridors(rng, left.get_room(), right.get_room(), rooms),
+            _ => ()
+        };
     }
 
     fn get_room(&self) -> Option<Room> {
@@ -195,71 +194,69 @@ impl Leaf {
             return self.room;
         }
 
-        // TODO better way of doing this
+        let mut left_room: Option<Room> = None;
+        let mut right_room: Option<Room> = None;
+
         if let Some(ref room) = self.left_child {
-            return room.get_room();
+            left_room = room.get_room();
         }
 
         if let Some(ref room) = self.right_child {
-            return room.get_room();
+            right_room = room.get_room();
         }
 
-        None
-    }
-
-    fn create_corridors(&mut self, rng: &mut StdRng, corridors: &mut Vec<Room>) {
-        if let Some(left_room) = self.left_child.as_mut().unwrap().get_room() {
-            if let Some(right_room) = self.right_child.as_mut().unwrap().get_room() {
-                // pick point in each room
-                let left_point = (rng.gen_range(left_room.x, left_room.x + left_room.width), rng.gen_range(left_room.y, left_room.y + left_room.height));
-                let right_point = (rng.gen_range(right_room.x, right_room.x + right_room.width), rng.gen_range(right_room.y, right_room.y + right_room.height));
-                // start at the left-most point
-                println!("about to add corridor {:?} {:?}", left_point, right_point);
-
-                // let width = left_point.0 - right_point.0;
-                // let height = left_point.1 - right_point.1;
-                match rng.gen_range(0, 2) {
-                    0 => {
-                        match left_point.0 <= right_point.0 {
-                            true => corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0, right_point.1)),
-                            false => corridors.push(horz_corridor(right_point.0, right_point.1, left_point.0, left_point.1))
-                        }
-                        match left_point.1 <= right_point.1 {
-                            true => corridors.push(vert_corridor(left_point.0, left_point.1, right_point.0, right_point.1)),
-                            false => corridors.push(vert_corridor(right_point.0, right_point.1, left_point.0, left_point.1))
-                        }
-                    }
-                    _ => {
-                        match left_point.1 <= right_point.1 {
-                            true => corridors.push(vert_corridor(left_point.0, left_point.1, right_point.0, right_point.1)),
-                            false => corridors.push(vert_corridor(right_point.0, right_point.1, left_point.0, left_point.1))
-                        }
-                        match left_point.0 <= right_point.0 {
-                            true => corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0, left_point.1)),
-                            false => corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0, right_point.1))
-                        }
-                    }
-                }
-                // move vertically
-                // move horz
-            }
-        }
+        match (left_room, right_room) {
+            (None, None) => return None,
+            (Some(room), _) => return Some(room),
+            (_, Some(room)) => return Some(room),
+        };
     }
 }
 
+// corridors are just very narrow rooms
+fn create_corridors(rng: &mut StdRng, left: Option<Room>, right: Option<Room>, corridors: &mut Vec<Room>) {
+    match (left, right) {
+        (Some(left_room), Some(right_room)) => {
+            // pick point in each room
+            let left_point = (rng.gen_range(left_room.x, left_room.x + left_room.width), rng.gen_range(left_room.y, left_room.y + left_room.height));
+            let right_point = (rng.gen_range(right_room.x, right_room.x + right_room.width), rng.gen_range(right_room.y, right_room.y + right_room.height));
 
-fn horz_corridor(start_x: i32, start_y: i32, end_x: i32, end_y: i32) -> Room {
-    // for col in start_x..end_x + 1 {
-    //     let pos = self.get_tile_coords(col, y);
-    //     self.board[pos] = Tile::Walkable;
-    // }
+            match rng.gen_range(0, 2) {
+                0 => {
+                    println!("path 1 {:?} {:?}", left_point, right_point);
+                    match left_point.0 <= right_point.0 {
+                        true => corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0)),
+                        false => corridors.push(horz_corridor(right_point.0, right_point.1, left_point.0))
+                    }
+                    match left_point.1 <= right_point.1 {
+                        true => corridors.push(vert_corridor(left_point.0, left_point.1, right_point.1)),
+                        false => corridors.push(vert_corridor(right_point.0, right_point.1, left_point.1))
+                    }
+                }
+                _ => {
+                    println!("path 2 {:?} {:?}", left_point, right_point);
+                    match left_point.1 <= right_point.1 {
+                        true => corridors.push(vert_corridor(left_point.0, left_point.1, right_point.1)),
+                        false => corridors.push(vert_corridor(right_point.0, right_point.1, left_point.1))
+                    }
+                    match left_point.0 <= right_point.0 {
+                        true => corridors.push(horz_corridor(left_point.0, right_point.1, right_point.0)),
+                        false => corridors.push(horz_corridor(right_point.0, left_point.1, left_point.0))
+                    }
+                }
+            }
+        },
+        _ => ()
+    };
+}
+
+
+fn horz_corridor(start_x: i32, start_y: i32, end_x: i32) -> Room {
+    println!("adding horz {:?}", Room::new(start_x, start_y, end_x - start_x, 1));
     Room::new(start_x, start_y, end_x - start_x, 1)
 }
 
-fn vert_corridor(start_x: i32, start_y: i32, end_x: i32, end_y: i32) -> Room {
-    // for row in start_y..end_y + 1 {
-    //     let pos = self.get_tile_coords(x, row);
-    //     self.board[pos] = Tile::Walkable;
-    // }
+fn vert_corridor(start_x: i32, start_y: i32, end_y: i32) -> Room {
+    println!("adding vert {:?}", Room::new(start_x, start_y, 1, end_y - start_y));
     Room::new(start_x, start_y, 1, end_y - start_y)
 }
