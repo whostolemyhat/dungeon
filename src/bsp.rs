@@ -1,81 +1,57 @@
 // https://gamedevelopment.tutsplus.com/tutorials/how-to-use-bsp-trees-to-generate-game-maps--gamedev-12268
 use rand::{ Rng, StdRng };
 use room::Room;
-use std::fmt;
 
-use level::{ Tile };
+use level::Level;
+use tile::Tile;
 
-#[derive(Debug)]
 pub struct BspLevel {
-    pub hash: String,
-    pub tile_size: i32,
-    pub width: i32,
-    pub height: i32,
-    pub board: Vec<Tile>,
-    pub leaves: Leaf,
-    pub rooms: Vec<Room>,
+    level: Level
 }
 
 impl BspLevel {
-    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng) -> Self {
-
+    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng) -> Level {
         let mut root = Leaf::new(0, 0, width, height, 8);
         root.generate(rng);
 
-        let mut rooms = vec![];
-        root.create_rooms(rng, &mut rooms);
+        // let mut rooms = vec![];
+        // root.create_rooms(rng, &mut rooms);
 
-        let mut level = BspLevel {
+        let level = Level {
             tile_size: 16,
             width,
             height,
             board: vec![Tile::Empty; (height * width) as usize],
             rooms: vec![],
             hash: hash.clone(),
-            leaves: root
         };
 
+        let mut map = BspLevel {
+            level
+        };
+
+        map.place_rooms(rng);
+
+        // for room in rooms {
+        //     level.add_room(&room);
+        // }
+
+        map.level
+    }
+
+    fn place_rooms(&mut self, rng: &mut StdRng) {
+        let mut root = Leaf::new(0, 0, self.level.width, self.level.height, 8);
+        root.generate(rng);
+
+        let mut rooms = vec![];
+        root.create_rooms(rng, &mut rooms);
         for room in rooms {
-            level.add_room(&room);
+            self.level.add_room(&room);
         }
-
-        level
-    }
-
-    fn get_tile_coords(&self, x: i32, y: i32) -> usize {
-        (y * self.width + x) as usize
-    }
-
-    fn add_room(&mut self, room: &Room) {
-        for row in 0..room.height {
-            for col in 0..room.width {
-                let y = room.y + row;
-                let x = room.x + col;
-                let coord = self.get_tile_coords(x, y);
-
-                self.board[coord] = Tile::Walkable;
-            }
-        }
-
-        self.rooms.push(*room);
     }
 }
 
-impl fmt::Display for BspLevel {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\n", self.hash)?;
-        for (i, row) in self.board.iter().enumerate() {
-            if i > 0 && i % self.width as usize == 0 {
-                write!(f, "\n")?;
-            }
-            write!(f, "{} ", row)?;
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Leaf {
     min_size: i32,
     x: i32,
@@ -84,7 +60,7 @@ pub struct Leaf {
     pub height: i32,
     pub left_child: Option<Box<Leaf>>,
     pub right_child: Option<Box<Leaf>>,
-    room: Option<Room>,
+    room: Option<Room>
 }
 
 impl Leaf {
@@ -98,7 +74,6 @@ impl Leaf {
             left_child: None,
             right_child: None,
             room: None,
-            // corridors: Vec::new()
         }
     }
 
@@ -167,7 +142,7 @@ impl Leaf {
             None => ()
         };
 
-        let min_room_width = 3;
+        let min_room_width = 4;
         let min_room_height = 3;
 
         // if last level, add a room

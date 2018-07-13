@@ -1,7 +1,7 @@
 [package]
-authors = ["James Tease <james@jamestease.co.uk>"]
+authors = ["James Baum <james@jamesbaum.co.uk>"]
 name = "dungeon"
-version = "0.1.0"
+version = "2.0.0"
 
 [dependencies]
 arrayref = "0.3.4"

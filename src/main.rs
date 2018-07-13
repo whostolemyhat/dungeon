@@ -8,9 +8,11 @@ extern crate serde;
 extern crate serde_json;
 extern crate clap;
 
-pub mod draw;
+mod draw;
+mod tile;
 mod level;
 mod room;
+mod roomscorridors;
 mod bsp;
 
 use sha2::{ Sha256, Digest };
@@ -18,14 +20,20 @@ use rand::prelude::*;
 use rand::distributions::Alphanumeric;
 use clap::{ App, Arg };
 
-use draw::{ draw, draw_bsp };
-use level::Level;
+use draw::{ draw };
+
+use roomscorridors::{ RoomsCorridors };
 use bsp::{ BspLevel };
 
 fn create_hash(text: &str) -> String {
     let mut hasher = Sha256::default();
     hasher.input(text.as_bytes());
     format!("{:x}", hasher.result())
+}
+
+enum Algorithm {
+    Bsp,
+    Rooms
 }
 
 fn main() {
@@ -49,6 +57,12 @@ fn main() {
                         .long("seed")
                         .takes_value(true)
                         .help("An existing seed. Must be 32 characters"))
+                    .arg(Arg::with_name("algo")
+                        .short("a")
+                        .long("algorithm")
+                        .takes_value(true)
+                        .possible_values(&["rooms", "bsp"])
+                        .help("The type of procedural algorithm to use"))
                     .get_matches();
 
     let board_width = 48;
@@ -69,26 +83,27 @@ fn main() {
         }
     };
 
+    let procgen_method = match matches.value_of("algo") {
+        Some(algo) => match algo {
+            "bsp" => Algorithm::Bsp,
+            "rooms" => Algorithm::Rooms,
+            _ => Algorithm::Rooms
+        },
+        None => Algorithm::Rooms
+    };
+
     let seed_u8 = array_ref!(seed.as_bytes(), 0, 32);
     let mut rng: StdRng = SeedableRng::from_seed(*seed_u8);
-    // let mut level = Level::new(board_width, board_height, &seed);
 
-    // level.place_rooms(&mut rng);
-    // level.place_corridors(&mut rng);
+    let level = match procgen_method {
+        Algorithm::Rooms => RoomsCorridors::new(board_width, board_height, &seed, &mut rng),
+        Algorithm::Bsp => BspLevel::new(board_width, board_height, &seed, &mut rng)
+    };
 
-    // println!("{}", level);
-
-    // // let serialised = serde_json::to_string(&level).unwrap();
-    // // println!("{}", &level.hash);
-    // // println!("{}", serialised);
-    // draw(&level, "./img", "17").unwrap();
-
-    let root = BspLevel::new(board_width, board_height, &seed, &mut rng);
-    // let mut root = Leaf::new(0, 0, board_width, board_height);
-    // root.generate(&mut rng);
-    // root.create_rooms(&mut rng);
-    println!("{}", root);
-    draw_bsp(&root, "./img", "bsp").unwrap();
+    println!("{}", level);
+    let serialised = serde_json::to_string(&level).unwrap();
+    println!("{}", serialised);
+    draw(&level, "./img", "rooms").unwrap();
 }
 
 // drunkards walk
