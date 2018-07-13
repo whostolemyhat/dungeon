@@ -14,9 +14,6 @@ impl BspLevel {
         let mut root = Leaf::new(0, 0, width, height, 8);
         root.generate(rng);
 
-        // let mut rooms = vec![];
-        // root.create_rooms(rng, &mut rooms);
-
         let level = Level {
             tile_size: 16,
             width,
@@ -31,11 +28,6 @@ impl BspLevel {
         };
 
         map.place_rooms(rng);
-
-        // for room in rooms {
-        //     level.add_room(&room);
-        // }
-
         map.level
     }
 

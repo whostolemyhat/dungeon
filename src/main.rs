@@ -62,7 +62,16 @@ fn main() {
                         .long("algorithm")
                         .takes_value(true)
                         .possible_values(&["rooms", "bsp"])
+                        .default_value("rooms")
                         .help("The type of procedural algorithm to use"))
+                    .arg(Arg::with_name("json")
+                         .short("j")
+                         .long("json")
+                         .help("If set, displays serialised JSON output"))
+                    .arg(Arg::with_name("draw")
+                         .short("d")
+                         .long("draw")
+                         .help("If set, creates a png representation"))
                     .get_matches();
 
     let board_width = 48;
@@ -83,27 +92,32 @@ fn main() {
         }
     };
 
-    let procgen_method = match matches.value_of("algo") {
-        Some(algo) => match algo {
-            "bsp" => Algorithm::Bsp,
-            "rooms" => Algorithm::Rooms,
-            _ => Algorithm::Rooms
-        },
-        None => Algorithm::Rooms
+    let method = match matches.value_of("algo").expect("Default algorithm not set") {
+        "bsp" => Algorithm::Bsp,
+        "rooms" => Algorithm::Rooms,
+        _ => unreachable![]
     };
 
     let seed_u8 = array_ref!(seed.as_bytes(), 0, 32);
     let mut rng: StdRng = SeedableRng::from_seed(*seed_u8);
 
-    let level = match procgen_method {
+    let level = match method {
         Algorithm::Rooms => RoomsCorridors::new(board_width, board_height, &seed, &mut rng),
         Algorithm::Bsp => BspLevel::new(board_width, board_height, &seed, &mut rng)
     };
 
+    let print_json = matches.is_present("json");
+    let draw_map = matches.is_present("draw");
+
     println!("{}", level);
-    let serialised = serde_json::to_string(&level).unwrap();
-    println!("{}", serialised);
-    draw(&level, "./img", "rooms").unwrap();
+    if print_json {
+        let serialised = serde_json::to_string(&level).expect("Serialising level failed");
+        println!("{}", serialised);
+    }
+
+    if draw_map {
+        draw(&level, "./img", "rooms").expect("Drawing failed");
+    }
 }
 
 // drunkards walk
