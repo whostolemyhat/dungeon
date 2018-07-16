@@ -2,18 +2,12 @@ extern crate rand;
 extern crate sha2;
 #[macro_use]
 extern crate arrayref;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 extern crate clap;
 
-mod draw;
-mod tile;
-mod level;
-mod room;
-mod roomscorridors;
-mod bsp;
+extern crate dungeon;
+use dungeon::{ roomscorridors, bsp, draw };
 
 use sha2::{ Sha256, Digest };
 use rand::prelude::*;
@@ -122,8 +116,8 @@ fn main() {
 
 // drunkards walk
 // bresenhams line algorithm
+// non-rectangular rooms
 // quadtree
-// grid-based http://roguebasin.roguelikedevelopment.org/index.php?title=Grid_Based_Dungeon_Generator
-// bsp https://gamedevelopment.tutsplus.com/tutorials/how-to-use-bsp-trees-to-generate-game-maps--gamedev-12268
 // grid (gen on top + pick random direction)
 // cellular automata https://gamedevelopment.tutsplus.com/tutorials/generate-random-cave-levels-using-cellular-automata--gamedev-9664
+// bsp https://gamedevelopment.tutsplus.com/tutorials/how-to-use-bsp-trees-to-generate-game-maps--gamedev-12268
