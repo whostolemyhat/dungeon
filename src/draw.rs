@@ -5,8 +5,9 @@ use tile::Tile;
 use std::fs::File;
 use self::cairo::{ Context, Format, ImageSurface };
 
-fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64) {
-    context.set_source_rgb(0.258, 0.525, 0.956);
+fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64, colour: (f64, f64, f64)) {
+    // context.set_source_rgb(0.258, 0.525, 0.956);
+    context.set_source_rgb(colour.0, colour.1, colour.2);
     context.new_path();
     context.move_to(x as f64, y as f64);
     context.line_to(x2 as f64, y as f64);
@@ -24,7 +25,8 @@ fn draw_tiles(context: &Context, board: &Vec<Vec<Tile>>, scale: f64) {
     for line in board {
         for (col, tile) in line.iter().enumerate() {
             match tile {
-                Tile::Walkable => draw_tile(context, col as f64 * scale, row as f64 * scale, col as f64 * scale + scale, row as f64 * scale + scale),
+                Tile::Walkable => draw_tile(context, col as f64 * scale, row as f64 * scale, col as f64 * scale + scale, row as f64 * scale + scale, (0.258, 0.525, 0.956)),
+                Tile::Wall => draw_tile(context, col as f64 * scale, row as f64 * scale, col as f64 * scale + scale, row as f64 * scale + scale, (0.956, 0.525, 0.258)),
                 _ => ()
             }
         }

@@ -74,10 +74,22 @@ fn main() {
                          .short("w")
                          .long("walls")
                          .help("Add wall tile around rooms"))
+                    .arg(Arg::with_name("height")
+                         .short("y")
+                         .takes_value(true)
+                         .default_value("40")
+                         .long("height")
+                         .help("Height of the level"))
+                    .arg(Arg::with_name("width")
+                         .short("x")
+                         .long("width")
+                         .takes_value(true)
+                         .default_value("48")
+                         .help("Width of the level"))
                     .get_matches();
 
-    let board_width = 48;
-    let board_height = 40;
+    let board_width = matches.value_of("width").expect("Width not set").parse::<i32>().expect("Error parsing width");
+    let board_height = matches.value_of("height").expect("Height not set").parse::<i32>().expect("Error parsing height");
 
     let seed: String = match matches.value_of("seed") {
         Some(text) => {
