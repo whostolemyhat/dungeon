@@ -66,6 +66,14 @@ fn main() {
                          .short("d")
                          .long("draw")
                          .help("If set, creates a png representation"))
+                    .arg(Arg::with_name("csv")
+                        .short("c")
+                        .long("csv")
+                        .help("Output board in CSV format"))
+                    .arg(Arg::with_name("walls")
+                         .short("w")
+                         .long("walls")
+                         .help("Add wall tile around rooms"))
                     .get_matches();
 
     let board_width = 48;
@@ -86,6 +94,7 @@ fn main() {
         }
     };
 
+    let walls = matches.is_present("walls");
     let method = match matches.value_of("algo").expect("Default algorithm not set") {
         "bsp" => Algorithm::Bsp,
         "rooms" => Algorithm::Rooms,
@@ -96,12 +105,13 @@ fn main() {
     let mut rng: StdRng = SeedableRng::from_seed(*seed_u8);
 
     let level = match method {
-        Algorithm::Rooms => RoomsCorridors::new(board_width, board_height, &seed, &mut rng),
-        Algorithm::Bsp => BspLevel::new(board_width, board_height, &seed, &mut rng)
+        Algorithm::Rooms => RoomsCorridors::new(board_width, board_height, &seed, &mut rng, walls),
+        Algorithm::Bsp => BspLevel::new(board_width, board_height, &seed, &mut rng, walls)
     };
 
     let print_json = matches.is_present("json");
     let draw_map = matches.is_present("draw");
+    let csv = matches.is_present("csv");
 
     println!("{}", level);
     if print_json {
@@ -110,7 +120,11 @@ fn main() {
     }
 
     if draw_map {
-        draw(&level, "./img", "rooms").expect("Drawing failed");
+        draw(&level, "./img", &seed).expect("Drawing failed");
+    }
+
+    if csv {
+        println!("{:?}", level.board_to_csv());
     }
 }
 

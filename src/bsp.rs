@@ -3,31 +3,28 @@ use rand::{ Rng, StdRng };
 use room::Room;
 
 use level::Level;
-use tile::Tile;
 
 pub struct BspLevel {
     level: Level
 }
 
 impl BspLevel {
-    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng) -> Level {
+    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng, add_walls: bool) -> Level {
         let mut root = Leaf::new(0, 0, width, height, 8);
         root.generate(rng);
 
-        let level = Level {
-            tile_size: 16,
-            width,
-            height,
-            board: vec![Tile::Empty; (height * width) as usize],
-            rooms: vec![],
-            hash: hash.clone(),
-        };
+        let level = Level::new(width, height, hash);
 
         let mut map = BspLevel {
             level
         };
 
         map.place_rooms(rng);
+
+        if add_walls {
+            map.level.add_walls();
+        }
+
         map.level
     }
 

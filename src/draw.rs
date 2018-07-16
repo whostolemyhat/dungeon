@@ -2,7 +2,6 @@ extern crate cairo;
 
 use level::{ Level };
 use tile::Tile;
-// use bsp::BspLevel;
 use std::fs::File;
 use self::cairo::{ Context, Format, ImageSurface };
 
@@ -19,21 +18,18 @@ fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64) {
     context.fill();
 }
 
-fn draw_tiles(context: &Context, board: &Vec<Tile>, scale: f64, width: i32) {
-    let mut col = 0;
+fn draw_tiles(context: &Context, board: &Vec<Vec<Tile>>, scale: f64) {
     let mut row = 0;
 
-    for tile in board {
-        match tile {
-            Tile::Walkable => draw_tile(context, col as f64 * scale, row as f64 * scale, col as f64 * scale + scale, row as f64 * scale + scale),
-            _ => ()
+    for line in board {
+        for (col, tile) in line.iter().enumerate() {
+            match tile {
+                Tile::Walkable => draw_tile(context, col as f64 * scale, row as f64 * scale, col as f64 * scale + scale, row as f64 * scale + scale),
+                _ => ()
+            }
         }
 
-        col = col + 1;
-        if col >= width {
-            col = 0;
-            row = row + 1;
-        }
+        row = row + 1;
     }
 }
 
@@ -42,21 +38,9 @@ pub fn draw(level: &Level, path: &str, img_name: &str) -> Result<(), ::std::io::
     let surface = ImageSurface::create(Format::ARgb32, level.width * level.tile_size, level.height * level.tile_size).unwrap();
     let ctx = Context::new(&surface);
 
-    draw_tiles(&ctx, &level.board, level.tile_size as f64, level.width);
+    draw_tiles(&ctx, &level.board, level.tile_size as f64);
     let mut file = File::create(default_output)?;
     surface.write_to_png(&mut file).unwrap();
 
     Ok(())
 }
-
-// pub fn draw_bsp(level: &BspLevel, path: &str, img_name: &str) -> Result<(), ::std::io::Error> {
-//     let default_output = format!("{}/{}.png", path, img_name);
-//     let surface = ImageSurface::create(Format::ARgb32, level.width * level.tile_size, level.height * level.tile_size).unwrap();
-//     let ctx = Context::new(&surface);
-
-//     draw_tiles(&ctx, &level.board, level.tile_size as f64, level.width);
-//     let mut file = File::create(default_output)?;
-//     surface.write_to_png(&mut file).unwrap();
-
-//     Ok(())
-// }

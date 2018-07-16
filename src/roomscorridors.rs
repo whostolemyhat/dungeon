@@ -9,15 +9,8 @@ pub struct RoomsCorridors {
 }
 
 impl RoomsCorridors {
-    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng) -> Level {
-        let level = Level {
-            tile_size: 16,
-            width,
-            height,
-            board: vec![Tile::Empty; (height * width) as usize],
-            rooms: Vec::new(),
-            hash: hash.clone()
-        };
+    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng, add_walls: bool) -> Level {
+        let level = Level::new(width, height, hash);
 
         let mut map = RoomsCorridors {
             level
@@ -26,20 +19,22 @@ impl RoomsCorridors {
         map.place_rooms(rng);
         map.place_corridors(rng);
 
+        if add_walls {
+            map.level.add_walls();
+        }
+
         map.level
     }
 
     fn horz_corridor(&mut self, start_x: i32, end_x: i32, y: i32) {
         for col in start_x..end_x + 1 {
-            let pos = self.level.get_tile_coords(col, y);
-            self.level.board[pos] = Tile::Walkable;
+            self.level.board[y as usize][col as usize] = Tile::Walkable;
         }
     }
 
     fn vert_corridor(&mut self, start_y: i32, end_y: i32, x: i32) {
         for row in start_y..end_y + 1 {
-            let pos = self.level.get_tile_coords(x, row);
-            self.level.board[pos] = Tile::Walkable;
+            self.level.board[row as usize][x as usize] = Tile::Walkable;
         }
     }
 
@@ -83,6 +78,38 @@ impl RoomsCorridors {
             // draw(&self, "./img", format!("0{}", i + 1).as_str()).unwrap();
         }
     }
+
+    // fn add_walls(&mut self) {
+    //     let mut y = 0;
+    //     for line in self.level.board {
+    //         for (x, tile) in line.iter().enumerate() {
+    //             match tile {
+    //                 Tile::Walkable => {
+    //                     self.add_wall(x - 1, y - 1);
+    //                     self.add_wall(x, y - 1);
+    //                     self.add_wall(x + 1, y - 1);
+
+    //                     self.add_wall(x - 1, y);
+    //                     self.add_wall(x + 1, y);
+
+    //                     self.add_wall(x - 1, y + 1);
+    //                     self.add_wall(x, y + 1);
+    //                     self.add_wall(x + 1, y + 1);
+    //                 },
+    //                 _ => ()
+    //             }
+    //         }
+
+    //         y = y + 1;
+    //     }
+    // }
+
+    // fn add_wall(&mut self, x: usize, y: usize) {
+    //     if self.level.board[y][x] == Tile::Empty {
+    //         self.level.board[y][x] = Tile::Wall;
+    //     }
+
+    // }
 
     pub fn place_corridors(&mut self, rng: &mut StdRng) {
         // TODO check bounds/len

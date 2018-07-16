@@ -1,17 +1,19 @@
 use serde::{ Serialize, Serializer };
 use std::fmt;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Tile {
     Empty,
-    Walkable
+    Walkable,
+    Wall
 }
 
 impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Tile::Empty => write!(f, " "),
-            Tile::Walkable => write!(f, "1")
+            Tile::Walkable => write!(f, "1"),
+            Tile::Wall => write!(f, "2")
         }
     }
 }
@@ -20,7 +22,8 @@ impl Serialize for Tile {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
         match self {
             Tile::Empty => serializer.serialize_i32(0),
-            Tile::Walkable => serializer.serialize_i32(1)
+            Tile::Walkable => serializer.serialize_i32(1),
+            Tile::Wall => serializer.serialize_i32(2)
         }
     }
 }
