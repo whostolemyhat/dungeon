@@ -79,40 +79,7 @@ impl RoomsCorridors {
         }
     }
 
-    // fn add_walls(&mut self) {
-    //     let mut y = 0;
-    //     for line in self.level.board {
-    //         for (x, tile) in line.iter().enumerate() {
-    //             match tile {
-    //                 Tile::Walkable => {
-    //                     self.add_wall(x - 1, y - 1);
-    //                     self.add_wall(x, y - 1);
-    //                     self.add_wall(x + 1, y - 1);
-
-    //                     self.add_wall(x - 1, y);
-    //                     self.add_wall(x + 1, y);
-
-    //                     self.add_wall(x - 1, y + 1);
-    //                     self.add_wall(x, y + 1);
-    //                     self.add_wall(x + 1, y + 1);
-    //                 },
-    //                 _ => ()
-    //             }
-    //         }
-
-    //         y = y + 1;
-    //     }
-    // }
-
-    // fn add_wall(&mut self, x: usize, y: usize) {
-    //     if self.level.board[y][x] == Tile::Empty {
-    //         self.level.board[y][x] = Tile::Wall;
-    //     }
-
-    // }
-
-    pub fn place_corridors(&mut self, rng: &mut StdRng) {
-        // TODO check bounds/len
+    fn place_corridors(&mut self, rng: &mut StdRng) {
         for i in 0..(self.level.rooms.len() - 1) {
             let room = self.level.rooms[i];
             let other = self.level.rooms[i + 1];
