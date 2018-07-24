@@ -83,8 +83,13 @@ impl Leaf {
     fn generate(&mut self, rng: &mut StdRng) {
         if self.is_leaf() {
             if self.split(rng) {
-                self.left_child.as_mut().unwrap().generate(rng);
-                self.right_child.as_mut().unwrap().generate(rng);
+                if let Some(ref mut left) = self.left_child {
+                    left.as_mut().generate(rng);
+                };
+
+                if let Some(ref mut right) = self.right_child {
+                    right.as_mut().generate(rng);
+                };
             }
         }
     }
@@ -126,13 +131,12 @@ impl Leaf {
     }
 
     fn create_rooms(&mut self, rng: &mut StdRng) {
-        match self.left_child {
-            Some(_) => self.left_child.as_mut().unwrap().create_rooms(rng),
-            None => ()
+        if let Some(ref mut room) = self.left_child {
+            room.as_mut().create_rooms(rng);
         };
-        match self.right_child {
-            Some(_) => self.right_child.as_mut().unwrap().create_rooms(rng),
-            None => ()
+
+        if let Some(ref mut room) = self.right_child {
+            room.as_mut().create_rooms(rng);
         };
 
         let min_room_width = 4;
@@ -149,9 +153,8 @@ impl Leaf {
         }
 
         // if there's a left and right child, create a corridor between them
-        match (&mut self.left_child, &mut self.right_child) {
-            (Some(ref mut left), Some(ref mut right)) => create_corridors(rng, left, right),
-            _ => ()
+        if let (Some(ref mut left), Some(ref mut right)) = (&mut self.left_child, &mut self.right_child) {
+            create_corridors(rng, left, right);
         };
     }
 
@@ -172,10 +175,10 @@ impl Leaf {
         }
 
         match (left_room, right_room) {
-            (None, None) => return None,
-            (Some(room), _) => return Some(room),
-            (_, Some(room)) => return Some(room),
-        };
+            (None, None) => None,
+            (Some(room), _) => Some(room),
+            (_, Some(room)) => Some(room),
+        }
     }
 
     fn iter(&self) -> LeafIterator {
@@ -185,36 +188,33 @@ impl Leaf {
 
 // corridors are just very narrow rooms
 fn create_corridors(rng: &mut StdRng, left: &mut Box<Leaf>, right: &mut Box<Leaf>) {
-    match (left.get_room(), right.get_room()) {
-        (Some(left_room), Some(right_room)) => {
-            // pick point in each room
-            let left_point = (rng.gen_range(left_room.x, left_room.x + left_room.width), rng.gen_range(left_room.y, left_room.y + left_room.height));
-            let right_point = (rng.gen_range(right_room.x, right_room.x + right_room.width), rng.gen_range(right_room.y, right_room.y + right_room.height));
+    if let (Some(left_room), Some(right_room)) = (left.get_room(), right.get_room()) {
+        // pick point in each room
+        let left_point = (rng.gen_range(left_room.x, left_room.x + left_room.width), rng.gen_range(left_room.y, left_room.y + left_room.height));
+        let right_point = (rng.gen_range(right_room.x, right_room.x + right_room.width), rng.gen_range(right_room.y, right_room.y + right_room.height));
 
-            match rng.gen_range(0, 2) {
-                0 => {
-                    match left_point.0 <= right_point.0 {
-                        true => left.corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0)),
-                        false => left.corridors.push(horz_corridor(right_point.0, left_point.1, left_point.0))
-                    }
-                    match left_point.1 <= right_point.1 {
-                        true => left.corridors.push(vert_corridor(right_point.0, left_point.1, right_point.1)),
-                        false => left.corridors.push(vert_corridor(right_point.0, right_point.1, left_point.1))
-                    }
+        match rng.gen_range(0, 2) {
+            0 => {
+                match left_point.0 <= right_point.0 {
+                    true => left.corridors.push(horz_corridor(left_point.0, left_point.1, right_point.0)),
+                    false => left.corridors.push(horz_corridor(right_point.0, left_point.1, left_point.0))
                 }
-                _ => {
-                    match left_point.1 <= right_point.1 {
-                        true => left.corridors.push(vert_corridor(left_point.0, left_point.1, right_point.1)),
-                        false => left.corridors.push(vert_corridor(left_point.0, right_point.1, left_point.1))
-                    }
-                    match left_point.0 <= right_point.0 {
-                        true => left.corridors.push(horz_corridor(left_point.0, right_point.1, right_point.0)),
-                        false => left.corridors.push(horz_corridor(right_point.0, right_point.1, left_point.0))
-                    }
+                match left_point.1 <= right_point.1 {
+                    true => left.corridors.push(vert_corridor(right_point.0, left_point.1, right_point.1)),
+                    false => left.corridors.push(vert_corridor(right_point.0, right_point.1, left_point.1))
                 }
             }
-        },
-        _ => ()
+            _ => {
+                match left_point.1 <= right_point.1 {
+                    true => left.corridors.push(vert_corridor(left_point.0, left_point.1, right_point.1)),
+                    false => left.corridors.push(vert_corridor(left_point.0, right_point.1, left_point.1))
+                }
+                match left_point.0 <= right_point.0 {
+                    true => left.corridors.push(horz_corridor(left_point.0, right_point.1, right_point.0)),
+                    false => left.corridors.push(horz_corridor(right_point.0, right_point.1, left_point.0))
+                }
+            }
+        }
     };
 }
 
