@@ -26,8 +26,8 @@ impl BspLevel {
     }
 
     fn place_rooms(&mut self, rng: &mut StdRng) {
-        let min_room_width = 3;
-        let min_room_height = 4;
+        let min_room_width = 4;
+        let min_room_height = 3;
         let min_size = 8;
         let mut root = Leaf::new(0, 0, self.level.width, self.level.height, min_size, min_room_width, min_room_height);
         root.generate(rng);
@@ -146,9 +146,6 @@ impl Leaf {
         if let Some(ref mut room) = self.right_child {
             room.as_mut().create_rooms(rng);
         };
-
-        // let min_room_width = 4;
-        // let min_room_height = 3;
 
         // if last level, add a room
         if self.is_leaf() {
