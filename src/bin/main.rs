@@ -86,6 +86,12 @@ fn main() {
                          .takes_value(true)
                          .default_value("48")
                          .help("Width of the level"))
+                    // .arg(Arg::with_name("roomwidth")
+                    //     .short("rw")
+                    //     .long("roomwidth")
+                    //     .takes_value(true)
+                    //     .default_value(3)
+                    //     .help("Minimum width of rooms"))
                     .get_matches();
 
     let board_width = matches.value_of("width").expect("Width not set").parse::<i32>().expect("Error parsing width");

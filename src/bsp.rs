@@ -26,13 +26,18 @@ impl BspLevel {
     }
 
     fn place_rooms(&mut self, rng: &mut StdRng) {
-        let mut root = Leaf::new(0, 0, self.level.width, self.level.height, 8);
+        let min_room_width = 3;
+        let min_room_height = 4;
+        let min_size = 8;
+        let mut root = Leaf::new(0, 0, self.level.width, self.level.height, min_size, min_room_width, min_room_height);
         root.generate(rng);
         root.create_rooms(rng);
 
         for leaf in root.iter() {
-            if let Some(room) = leaf.get_room() {
-                self.level.add_room(&room);
+            if leaf.is_leaf() {
+                if let Some(room) = leaf.get_room() {
+                    self.level.add_room(&room);
+                }
             }
 
             for corridor in &leaf.corridors {
@@ -42,23 +47,26 @@ impl BspLevel {
     }
 }
 
-#[derive(Clone, Debug)]
 struct Leaf {
     min_size: i32,
+    min_room_width: i32,
+    min_room_height: i32,
     x: i32,
     y: i32,
-    pub width: i32,
-    pub height: i32,
-    pub left_child: Option<Box<Leaf>>,
-    pub right_child: Option<Box<Leaf>>,
+    width: i32,
+    height: i32,
+    left_child: Option<Box<Leaf>>,
+    right_child: Option<Box<Leaf>>,
     room: Option<Room>,
     corridors: Vec<Room>
 }
 
 impl Leaf {
-    pub fn new(x: i32, y: i32, width: i32, height: i32, min_size: i32) -> Self {
+    pub fn new(x: i32, y: i32, width: i32, height: i32, min_size: i32, min_room_width: i32, min_room_height: i32) -> Self {
         Leaf {
             min_size,
+            min_room_width,
+            min_room_height,
             x,
             y,
             width,
@@ -120,11 +128,11 @@ impl Leaf {
 
         let split_pos = rng.gen_range(self.min_size, max);
         if split_horz {
-            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, self.width, split_pos, self.min_size)));
-            self.right_child = Some(Box::new(Leaf::new(self.x, self.y + split_pos, self.width, self.height - split_pos, self.min_size)));
+            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, self.width, split_pos, self.min_size, self.min_room_width, self.min_room_height)));
+            self.right_child = Some(Box::new(Leaf::new(self.x, self.y + split_pos, self.width, self.height - split_pos, self.min_size, self.min_room_width, self.min_room_height)));
         } else {
-            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, split_pos, self.height, self.min_size)));
-            self.right_child = Some(Box::new(Leaf::new(self.x + split_pos, self.y, self.width - split_pos, self.height, self.min_size)));
+            self.left_child = Some(Box::new(Leaf::new(self.x, self.y, split_pos, self.height, self.min_size, self.min_room_width, self.min_room_height)));
+            self.right_child = Some(Box::new(Leaf::new(self.x + split_pos, self.y, self.width - split_pos, self.height, self.min_size, self.min_room_width, self.min_room_height)));
         }
 
         true
@@ -139,13 +147,13 @@ impl Leaf {
             room.as_mut().create_rooms(rng);
         };
 
-        let min_room_width = 4;
-        let min_room_height = 3;
+        // let min_room_width = 4;
+        // let min_room_height = 3;
 
         // if last level, add a room
         if self.is_leaf() {
-            let width = rng.gen_range(min_room_width, self.width);
-            let height = rng.gen_range(min_room_height, self.height);
+            let width = rng.gen_range(self.min_room_width, self.width);
+            let height = rng.gen_range(self.min_room_height, self.height);
             let x = rng.gen_range(0, self.width - width);
             let y = rng.gen_range(0, self.height - height);
 
