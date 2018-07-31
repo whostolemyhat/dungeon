@@ -85,7 +85,7 @@ impl Level {
 
     }
 
-    pub fn board_to_csv(&self) -> Vec<String> {
+    pub fn board_to_csv(&self) -> String {
         let mut output = Vec::new();
         for row in 0..self.height as usize {
             for col in 0..self.width as usize {
@@ -99,7 +99,7 @@ impl Level {
             output.push("\n".to_string());
         }
 
-        output
+        output.join(",")
     }
 }
 
