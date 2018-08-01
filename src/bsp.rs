@@ -9,8 +9,8 @@ pub struct BspLevel {
 }
 
 impl BspLevel {
-    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng, add_walls: bool) -> Level {
-        let level = Level::new(width, height, hash);
+    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng, add_walls: bool, min_room_width: i32, min_room_height: i32) -> Level {
+        let level = Level::new(width, height, hash, min_room_width, min_room_height);
 
         let mut map = BspLevel {
             level
@@ -26,10 +26,8 @@ impl BspLevel {
     }
 
     fn place_rooms(&mut self, rng: &mut StdRng) {
-        let min_room_width = 4;
-        let min_room_height = 3;
         let min_size = 8;
-        let mut root = Leaf::new(0, 0, self.level.width, self.level.height, min_size, min_room_width, min_room_height);
+        let mut root = Leaf::new(0, 0, self.level.width, self.level.height, min_size, self.level.min_room_width, self.level.min_room_height);
         root.generate(rng);
         root.create_rooms(rng);
 

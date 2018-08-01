@@ -86,12 +86,18 @@ fn main() {
                          .takes_value(true)
                          .default_value("48")
                          .help("Width of the level"))
-                    // .arg(Arg::with_name("roomwidth")
-                    //     .short("rw")
-                    //     .long("roomwidth")
-                    //     .takes_value(true)
-                    //     .default_value(3)
-                    //     .help("Minimum width of rooms"))
+                    .arg(Arg::with_name("minroomwidth")
+                        .short("rw")
+                        .long("minroomwidth")
+                        .takes_value(true)
+                        .default_value("4")
+                        .help("Minimum width of rooms"))
+                    .arg(Arg::with_name("minroomheight")
+                        .short("rw")
+                        .long("minroomheight")
+                        .takes_value(true)
+                        .default_value("5")
+                        .help("Minimum height of rooms"))
                     .get_matches();
 
     let board_width = matches.value_of("width").expect("Width not set").parse::<i32>().expect("Error parsing width");
@@ -119,12 +125,15 @@ fn main() {
         _ => unreachable![]
     };
 
+    let min_room_width: i32 = matches.value_of("minroomwidth").expect("No room width").parse().expect("Error parsing min room width");
+    let min_room_height: i32 = matches.value_of("minroomheight").expect("No room height").parse().expect("Error parsing min room height");
+
     let seed_u8 = array_ref!(seed.as_bytes(), 0, 32);
     let mut rng: StdRng = SeedableRng::from_seed(*seed_u8);
 
     let level = match method {
-        Algorithm::Rooms => RoomsCorridors::new(board_width, board_height, &seed, &mut rng, walls),
-        Algorithm::Bsp => BspLevel::new(board_width, board_height, &seed, &mut rng, walls)
+        Algorithm::Rooms => RoomsCorridors::new(board_width, board_height, &seed, &mut rng, walls, min_room_width, min_room_height),
+        Algorithm::Bsp => BspLevel::new(board_width, board_height, &seed, &mut rng, walls, min_room_width, min_room_height)
     };
 
     let print_json = matches.is_present("json");
@@ -146,6 +155,8 @@ fn main() {
     }
 }
 
+// include pre-generated rooms
+// add detail to rooms
 // drunkards walk
 // bresenhams line algorithm
 // non-rectangular rooms

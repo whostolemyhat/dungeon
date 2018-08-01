@@ -9,8 +9,8 @@ pub struct RoomsCorridors {
 }
 
 impl RoomsCorridors {
-    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng, add_walls: bool) -> Level {
-        let level = Level::new(width, height, hash);
+    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng, add_walls: bool, min_room_width: i32, min_room_height: i32) -> Level {
+        let level = Level::new(width, height, hash, min_room_width, min_room_height);
 
         let mut map = RoomsCorridors {
             level
@@ -41,17 +41,17 @@ impl RoomsCorridors {
     fn place_rooms(&mut self, rng: &mut StdRng) {
         let max_rooms = 10;
 
-        let min_room_width = 4;
+        // let min_room_width = 4;
         let max_room_width = 8;
-        let min_room_height = 5;
+        // let min_room_height = 5;
         let max_room_height = 12;
 
         // TODO fix out of bounds
         for _ in 0..max_rooms {
             let mut x = rng.gen_range(0, self.level.width);
             let mut y = rng.gen_range(0, self.level.height);
-            let width = rng.gen_range(min_room_width, max_room_width);
-            let height = rng.gen_range(min_room_height, max_room_height);
+            let width = rng.gen_range(self.level.min_room_width, max_room_width);
+            let height = rng.gen_range(self.level.min_room_height, max_room_height);
 
             if x + width > self.level.width {
                 x = self.level.width - width;

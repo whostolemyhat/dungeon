@@ -10,10 +10,12 @@ pub struct Level {
     pub height: i32,
     pub board: Vec<Vec<Tile>>,
     pub rooms: Vec<Room>,
+    pub min_room_width: i32,
+    pub min_room_height: i32,
 }
 
 impl Level {
-    pub fn new(width: i32, height: i32, hash: &String) -> Self {
+    pub fn new(width: i32, height: i32, hash: &String, min_room_width: i32, min_room_height: i32) -> Self {
         let mut board = Vec::new();
         for _ in 0..height {
             let row = vec![Tile::Empty; width as usize];
@@ -26,7 +28,9 @@ impl Level {
             height,
             board,
             rooms: vec![],
-            hash: hash.clone()
+            hash: hash.clone(),
+            min_room_width,
+            min_room_height
         }
     }
 
