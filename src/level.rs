@@ -48,6 +48,7 @@ impl Level {
     }
 
     pub fn add_walls(&mut self) {
+        // TODO add corners
         for y in 0..self.board.len() {
             for x in 0..self.board[y].len() {
                 match self.board[y][x] {
@@ -92,18 +93,19 @@ impl Level {
     pub fn board_to_csv(&self) -> String {
         let mut output = Vec::new();
         for row in 0..self.height as usize {
+            let mut row_output = Vec::new();
             for col in 0..self.width as usize {
                 if self.board[row][col] == Tile::Empty {
-                    output.push("0".to_string());
+                    row_output.push("0".to_string());
                 } else {
-                    output.push(format!("{}", self.board[row][col]));
+                    row_output.push(format!("{}", self.board[row][col]));
                 }
             }
 
-            output.push("\n".to_string());
+            output.push(row_output.join(","));
         }
 
-        output.join(",")
+        output.join("\n")
     }
 }
 
