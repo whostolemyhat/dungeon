@@ -1,10 +1,12 @@
+use tile::Tile;
+
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Point {
     pub x: i32,
     pub y: i32
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Room {
     pub x: i32,
     pub y: i32,
@@ -12,11 +14,25 @@ pub struct Room {
     pub y2: i32,
     pub width: i32,
     pub height: i32,
-    pub centre: Point
+    pub centre: Point,
+    pub layout: Vec<Vec<Tile>>
 }
 
 impl Room {
-    pub fn new(x: i32, y: i32, width: i32, height: i32) -> Self {
+    pub fn new(x: i32, y: i32, width: i32, height: i32, layout: Option<Vec<Vec<Tile>>>) -> Self {
+        let tiles = match layout {
+            Some(tiles) => tiles,
+            None => {
+                let mut board = vec![];
+                for _ in 0..height {
+                    let row = vec![Tile::Walkable; width as usize];
+                    board.push(row);
+                }
+
+                board
+            }
+        };
+
         Room {
             x,
             x2: x + width,
@@ -27,7 +43,8 @@ impl Room {
             centre: Point {
                 x: x + width / 2 as i32,
                 y: y + height / 2 as i32
-            }
+            },
+            layout: tiles
         }
     }
 
@@ -36,13 +53,14 @@ impl Room {
     }
 }
 
+
 #[cfg(test)]
 mod tests {
     use room::Room;
 
     #[test]
     fn test_new_room() {
-        let room = Room::new(2, 12, 8, 9);
+        let room = Room::new(2, 12, 8, 9, None);
         assert_eq!(room.x, 2);
         assert_eq!(room.x2, 10);
         assert_eq!(room.y, 12);
@@ -55,9 +73,9 @@ mod tests {
 
     #[test]
     fn test_intersects() {
-        let room = Room::new(2, 12, 8, 9);
-        let other = Room::new(3, 12, 8, 9);
-        let third = Room::new(18, 20, 4, 4);
+        let room = Room::new(2, 12, 8, 9, None);
+        let other = Room::new(3, 12, 8, 9, None);
+        let third = Room::new(18, 20, 4, 4, None);
 
         assert!(room.intersects(&other));
         assert!(!room.intersects(&third));
