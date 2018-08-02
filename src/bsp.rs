@@ -37,7 +37,21 @@ impl BspLevel {
             vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable]
         ];
 
-        let rooms = vec![prebuilt];
+        let another = vec![
+            vec![Tile::Empty, Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Empty, Tile::Empty],
+            vec![Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Empty],
+            vec![Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty],
+            vec![Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Empty],
+            vec![Tile::Empty, Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Empty, Tile::Empty],
+        ];
+
+        let rooms = vec![prebuilt, another];
 
         let min_size = 8;
         let mut root = Leaf::new(0, 0, self.level.width, self.level.height, min_size, self.level.min_room_width, self.level.min_room_height);
@@ -161,7 +175,6 @@ impl Leaf {
 
         // if last level, add a room
         if self.is_leaf() {
-            // let room = pick_room(rng, rooms);
             let room = rooms.next();
             let width = rng.gen_range(self.min_room_width, self.width);
             let height = rng.gen_range(self.min_room_height, self.height);
@@ -207,17 +220,6 @@ impl Leaf {
         LeafIterator::new(&self)
     }
 }
-
-// fn pick_room(rng: &mut StdRng, rooms: Iter<Vec<Vec<Tile>>>) -> Option<Vec<Vec<Tile>>> {
-
-//     // either use blank room
-//     // or pick from vec of prebuilt rooms
-//     // match rng.gen_range(0, 2) {
-//     //     0 => Some(rooms.next()),
-//     //     _ => None
-//     // }
-//     rooms.next()
-// }
 
 // corridors are just very narrow rooms
 fn create_corridors(rng: &mut StdRng, left: &mut Box<Leaf>, right: &mut Box<Leaf>) {
