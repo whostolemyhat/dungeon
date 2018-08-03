@@ -48,7 +48,7 @@ impl Level {
     //     self.rooms.push(room.clone());
     // }
 
-    pub fn add_prebuilt(&mut self, room: &Room) {
+    pub fn add_room(&mut self, room: &Room) {
         for row in 0..room.layout.len() {
             for col in 0..room.layout[row].len() {
                 let y = room.y as usize + row;

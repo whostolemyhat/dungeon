@@ -72,7 +72,7 @@ impl RoomsCorridors {
             }
 
             if !collides {
-                self.level.add_prebuilt(&room);
+                self.level.add_room(&room);
             }
 
             // draw(&self, "./img", format!("0{}", i + 1).as_str()).unwrap();

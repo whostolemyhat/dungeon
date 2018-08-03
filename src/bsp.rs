@@ -19,7 +19,6 @@ impl BspLevel {
         };
 
         map.place_rooms(rng);
-        // map.level.add_prebuilt(&prebuilt);
 
         if add_walls {
             map.level.add_walls();
@@ -37,19 +36,20 @@ impl BspLevel {
             vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable]
         ];
 
-        let another = vec![
-            vec![Tile::Empty, Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Empty, Tile::Empty],
-            vec![Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Empty],
-            vec![Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty],
-            vec![Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Empty],
-            vec![Tile::Empty, Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Empty, Tile::Empty],
+        let another = room![
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 1, 1, 0, 0],
+            [0, 1, 1, 1, 1, 1, 0],
+            [1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 0, 1, 0, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 0, 1, 0, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1, 0],
+            [0, 0, 1, 1, 1, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0]
         ];
+
 
         let rooms = vec![prebuilt, another];
 
@@ -61,12 +61,12 @@ impl BspLevel {
         for leaf in root.iter() {
             if leaf.is_leaf() {
                 if let Some(room) = leaf.get_room() {
-                    self.level.add_prebuilt(&room);
+                    self.level.add_room(&room);
                 }
             }
 
             for corridor in &leaf.corridors {
-                self.level.add_prebuilt(&corridor);
+                self.level.add_room(&corridor);
             }
         }
     }
