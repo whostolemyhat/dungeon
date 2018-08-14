@@ -50,8 +50,22 @@ impl BspLevel {
             [0, 0, 0, 1, 0, 0, 0]
         ];
 
+        let obstacles = room![
+            [1, 1, 0, 1, 0, 0, 0],
+            [0, 1, 1, 1, 1, 0, 0],
+            [0, 1, 1, 1, 1, 1, 0],
+            [1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 2, 1, 2, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 2, 1, 2, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1, 0],
+            [0, 1, 1, 1, 1, 0, 0],
+            [1, 1, 0, 1, 1, 1, 0]
+        ];
 
-        let rooms = vec![prebuilt, another];
+
+        let rooms = vec![prebuilt, another, obstacles];
 
         let min_size = 8;
         let mut root = Leaf::new(0, 0, self.level.width, self.level.height, min_size, self.level.min_room_width, self.level.min_room_height);

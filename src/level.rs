@@ -34,35 +34,17 @@ impl Level {
         }
     }
 
-    // pub fn add_room(&mut self, room: &Room) {
-    //     // TODO check coord is empty
-    //     for row in 0..room.height {
-    //         for col in 0..room.width {
-    //             let y = (room.y + row) as usize;
-    //             let x = (room.x + col) as usize;
-
-    //             self.board[y][x] = Tile::Walkable;
-    //         }
-    //     }
-
-    //     self.rooms.push(room.clone());
-    // }
-
     pub fn add_room(&mut self, room: &Room) {
         for row in 0..room.layout.len() {
             for col in 0..room.layout[row].len() {
                 let y = room.y as usize + row;
                 let x = room.x as usize + col;
 
-                match room.layout[row][col] {
-                    Tile::Walkable => self.board[y][x] = Tile::Walkable,
-                    Tile::Wall => self.board[y][x] = Tile::Wall,
-                    _ => self.board[y][x] = Tile::Empty,
-                };
+                self.board[y][x] = room.layout[row][col];
             }
         }
 
-        // self.rooms.push(room.clone());
+        self.rooms.push(room.clone());
     }
 
     pub fn add_walls(&mut self) {
