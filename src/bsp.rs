@@ -64,7 +64,6 @@ impl BspLevel {
             [1, 1, 0, 1, 1, 1, 0]
         ];
 
-
         let rooms = vec![prebuilt, another, obstacles];
 
         let min_size = 8;

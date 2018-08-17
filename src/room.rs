@@ -69,6 +69,7 @@ impl Room {
 #[cfg(test)]
 mod tests {
     use room::Room;
+    use tile::Tile;
 
     #[test]
     fn test_new_room() {
@@ -95,5 +96,63 @@ mod tests {
         assert!(!other.intersects(&third));
         assert!(!third.intersects(&other));
         assert!(!third.intersects(&room));
+    }
+
+    #[test]
+    fn test_macro() {
+        let room = room![
+            [1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1]
+        ];
+        let another = room![
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 1, 1, 1, 0, 0],
+            [0, 1, 1, 1, 1, 1, 0],
+            [1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 0, 1, 0, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 0, 1, 0, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1, 0],
+            [0, 0, 1, 1, 1, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0]
+        ];
+
+        let walls = room![
+            [2, 2, 2, 2, 2],
+            [2, 1, 1, 1, 2],
+            [2, 1, 0, 1, 2],
+            [2, 1, 1, 1, 2],
+            [2, 2, 2, 2, 2]
+        ];
+
+        assert_eq!(room, vec![
+            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable]
+        ]);
+
+        assert_eq!(another, vec![
+            vec![Tile::Empty, Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Empty, Tile::Empty],
+            vec![Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Empty],
+            vec![Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
+            vec![Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty],
+            vec![Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Empty],
+            vec![Tile::Empty, Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Empty, Tile::Empty],
+        ]);
+
+        assert_eq!(walls, vec![
+            vec![Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall],
+            vec![Tile::Wall, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Wall],
+            vec![Tile::Wall, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Wall],
+            vec![Tile::Wall, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Wall],
+            vec![Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall]
+        ]);
     }
 }
