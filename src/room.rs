@@ -9,13 +9,13 @@ pub struct Point {
 macro_rules! room {
     (
         $([$( $x:expr ),*]),*
-    ) => {{
+    ) => (
         vec![$( vec![$(match $x {
             1 => Tile::Walkable,
             2 => Tile::Wall,
             _ => Tile::Empty,
         }),*]),*]
-    }}
+    )
 }
 
 #[derive(Debug, Clone, Serialize)]
