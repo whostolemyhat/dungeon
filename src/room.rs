@@ -1,7 +1,6 @@
 use serde_derive::Serialize;
 
 use crate::tile::Tile;
-use serde_derive::Serialize;
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Point {
