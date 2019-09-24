@@ -1,10 +1,9 @@
 // https://gamedevelopment.tutsplus.com/tutorials/how-to-use-bsp-trees-to-generate-game-maps--gamedev-12268
 use rand::{ Rng, StdRng };
-use room::{ Room };
 
-use level::Level;
-
-use tile::Tile;
+use crate::room::{ Room };
+use crate::level::Level;
+use crate::tile::Tile;
 
 pub struct BspLevel {
     level: Level

@@ -1,6 +1,8 @@
 use std::fmt;
-use room::Room;
-use tile::Tile;
+use serde_derive::Serialize;
+
+use crate::room::Room;
+use crate::tile::Tile;
 
 #[derive(Serialize)]
 pub struct Level {

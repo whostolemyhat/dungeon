@@ -1,8 +1,8 @@
 use rand::{ Rng, StdRng };
 
-use level::Level;
-use room::Room;
-use tile::Tile;
+use crate::level::Level;
+use crate::room::Room;
+use crate::tile::Tile;
 
 pub struct RoomsCorridors {
     level: Level

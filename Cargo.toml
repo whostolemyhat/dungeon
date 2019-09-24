@@ -1,7 +1,8 @@
 [package]
 authors = ["James Baum <james@jamesbaum.co.uk>"]
 name = "dungeon"
-version = "2.0.1"
+version = "3.0.0"
+edition = "2018"
 
 [dependencies]
 arrayref = "0.3.4"

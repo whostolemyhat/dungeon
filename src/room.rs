@@ -1,4 +1,6 @@
-use tile::Tile;
+use serde_derive::Serialize;
+
+use crate::tile::Tile;
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Point {
@@ -68,8 +70,8 @@ impl Room {
 
 #[cfg(test)]
 mod tests {
-    use room::Room;
-    use tile::Tile;
+    use crate::room::Room;
+    use crate::tile::Tile;
 
     #[test]
     fn test_new_room() {

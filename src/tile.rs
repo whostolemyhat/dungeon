@@ -30,7 +30,7 @@ impl Serialize for Tile {
 
 #[cfg(test)]
 mod tests {
-    use tile::Tile;
+    use crate::tile::Tile;
     use serde_json;
 
     #[test]

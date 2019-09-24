@@ -1,12 +1,4 @@
-extern crate rand;
-extern crate sha2;
-#[macro_use]
-extern crate arrayref;
-extern crate serde;
-extern crate serde_json;
-extern crate clap;
-
-extern crate dungeon;
+use arrayref::array_ref;
 use dungeon::{ roomscorridors, bsp, draw };
 
 use sha2::{ Sha256, Digest };
@@ -39,7 +31,7 @@ fn main() {
     // max rooms
     // room size
     let matches = App::new("Dungeon")
-                    .version("1.0")
+                    .version("3.0")
                     .author("James Baum <@whostolemyhat>")
                     .arg(Arg::with_name("text")
                         .short("t")
