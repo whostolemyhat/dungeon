@@ -38,10 +38,6 @@ impl<'de> Deserialize<'de> for Tile {
         2 => Tile::Wall,
         _ => Tile::Empty
       };
-      // println!("tile {:?}", s);
-      // ma
-
-      // Ok(Tile::Empty)
       Ok(tile)
     }
 }

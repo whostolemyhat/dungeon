@@ -30,60 +30,13 @@ impl BspLevel {
     }
 
     fn place_rooms(&mut self, rng: &mut StdRng) {
-        let prebuilt = vec![
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Empty, Tile::Empty, Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Empty, Tile::Empty, Tile::Empty],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable]
-        ];
-
+        // TODO move these
+        // TODO handle unwrap
         let dynamic = fs::read_to_string("rooms/diamond.json").unwrap();
-        // let dynamic_room = room![dynamic];
-        // let mut data = String::new();
-        // file.read_to_string(&mut data)
-        // let json: Vec<Vec<Tile>> = match from_str(&dynamic) {
-        //   Ok(tiles) => tiles,
-        //   Err(err) => {
-        //     println!("{:?}", err);
-        //     vec![]
-        //   }
-        // };
         let json: Vec<Vec<Tile>> = from_str(&dynamic).unwrap();
 
         let obstacles_json = fs::read_to_string("rooms/obstacles.json").unwrap();
         let obstacles: Vec<Vec<Tile>> = from_str(&obstacles_json).unwrap();
-
-        // println!("{:?}", json);
-        // let does_this_work = room![json];
-
-        // let another = room![
-        //     [0, 0, 0, 1, 0, 0, 0],
-        //     [0, 0, 1, 1, 1, 0, 0],
-        //     [0, 1, 1, 1, 1, 1, 0],
-        //     [1, 1, 1, 1, 1, 1, 1],
-        //     [1, 1, 0, 1, 0, 1, 1],
-        //     [1, 1, 1, 1, 1, 1, 1],
-        //     [1, 1, 0, 1, 0, 1, 1],
-        //     [1, 1, 1, 1, 1, 1, 1],
-        //     [0, 1, 1, 1, 1, 1, 0],
-        //     [0, 0, 1, 1, 1, 0, 0],
-        //     [0, 0, 0, 1, 0, 0, 0]
-        // ];
-
-        // let obstacles = room![
-        //     [1, 1, 0, 1, 0, 0, 0],
-        //     [0, 1, 1, 1, 1, 0, 0],
-        //     [0, 1, 1, 1, 1, 1, 0],
-        //     [1, 1, 1, 1, 1, 1, 1],
-        //     [1, 1, 2, 1, 2, 1, 1],
-        //     [1, 1, 1, 1, 1, 1, 1],
-        //     [1, 1, 2, 1, 2, 1, 1],
-        //     [1, 1, 1, 1, 1, 1, 1],
-        //     [0, 1, 1, 1, 1, 1, 0],
-        //     [0, 1, 1, 1, 1, 0, 0],
-        //     [1, 1, 0, 1, 1, 1, 0]
-        // ];
 
         let rooms = vec![json, obstacles];
 
