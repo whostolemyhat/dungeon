@@ -13,7 +13,28 @@ Creates a randomised level, for a rogue-like or similar, using room and corridor
 - `cargo run` - creates a level using a randomly generated seed
 - `cargo run -- -t blah` - uses text passed in via `-t` to create a hash which is then used as a seed
 - `cargo run -- -s e8edd254c4ffece9f4937b4f1bae4ef6aec4124f86eee0c09428afac036cef47` - uses input as seed directly
-- `cargo run -- -b` - use binary space partitoning to create level, rather than random room placement.
+- `cargo run -- -a bsp` - use binary space partitoning to create level, rather than random room placement.
+
+All flags and options:
+
+FLAGS:
+    -c, --csv        Output board in CSV format
+    -d, --draw       If set, creates a png representation
+    -h, --help       Prints help information
+    -j, --json       If set, displays serialised JSON output
+    -V, --version    Prints version information
+    -w, --walls      Add wall tile around rooms
+
+OPTIONS:
+    -a, --algorithm <algo>                 The type of procedural algorithm to use [default: rooms]  [possible values:
+                                           rooms, bsp]
+    -y, --height <height>                  Height of the level [default: 40]
+    -n, --minroomheight <minroomheight>    Minimum height of rooms [default: 5]
+    -m, --minroomwidth <minroomwidth>      Minimum width of rooms [default: 4]
+    -s, --seed <seed>                      An existing seed. Must be 32 characters
+    -t, --text <text>                      A string to hash and use as a seed
+    -x, --width <width>                    Width of the level [default: 48]
+
 
 ## Example JSON output - rooms and corridors
 
