@@ -1,9 +1,12 @@
 // https://gamedevelopment.tutsplus.com/tutorials/how-to-use-bsp-trees-to-generate-game-maps--gamedev-12268
 use rand::{ Rng, StdRng };
+use std::fs;
+use serde_json::from_str;
 
 use crate::room::{ Room };
 use crate::level::Level;
 use crate::tile::Tile;
+
 
 pub struct BspLevel {
     level: Level
@@ -35,35 +38,54 @@ impl BspLevel {
             vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable]
         ];
 
-        let another = room![
-            [0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 1, 1, 1, 0, 0],
-            [0, 1, 1, 1, 1, 1, 0],
-            [1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 0, 1, 0, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 0, 1, 0, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1, 0],
-            [0, 0, 1, 1, 1, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0]
-        ];
+        let dynamic = fs::read_to_string("rooms/diamond.json").unwrap();
+        // let dynamic_room = room![dynamic];
+        // let mut data = String::new();
+        // file.read_to_string(&mut data)
+        // let json: Vec<Vec<Tile>> = match from_str(&dynamic) {
+        //   Ok(tiles) => tiles,
+        //   Err(err) => {
+        //     println!("{:?}", err);
+        //     vec![]
+        //   }
+        // };
+        let json: Vec<Vec<Tile>> = from_str(&dynamic).unwrap();
 
-        let obstacles = room![
-            [1, 1, 0, 1, 0, 0, 0],
-            [0, 1, 1, 1, 1, 0, 0],
-            [0, 1, 1, 1, 1, 1, 0],
-            [1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 2, 1, 2, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 2, 1, 2, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1, 0],
-            [0, 1, 1, 1, 1, 0, 0],
-            [1, 1, 0, 1, 1, 1, 0]
-        ];
+        let obstacles_json = fs::read_to_string("rooms/obstacles.json").unwrap();
+        let obstacles: Vec<Vec<Tile>> = from_str(&obstacles_json).unwrap();
 
-        let rooms = vec![prebuilt, another, obstacles];
+        // println!("{:?}", json);
+        // let does_this_work = room![json];
+
+        // let another = room![
+        //     [0, 0, 0, 1, 0, 0, 0],
+        //     [0, 0, 1, 1, 1, 0, 0],
+        //     [0, 1, 1, 1, 1, 1, 0],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [1, 1, 0, 1, 0, 1, 1],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [1, 1, 0, 1, 0, 1, 1],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [0, 1, 1, 1, 1, 1, 0],
+        //     [0, 0, 1, 1, 1, 0, 0],
+        //     [0, 0, 0, 1, 0, 0, 0]
+        // ];
+
+        // let obstacles = room![
+        //     [1, 1, 0, 1, 0, 0, 0],
+        //     [0, 1, 1, 1, 1, 0, 0],
+        //     [0, 1, 1, 1, 1, 1, 0],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [1, 1, 2, 1, 2, 1, 1],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [1, 1, 2, 1, 2, 1, 1],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [0, 1, 1, 1, 1, 1, 0],
+        //     [0, 1, 1, 1, 1, 0, 0],
+        //     [1, 1, 0, 1, 1, 1, 0]
+        // ];
+
+        let rooms = vec![json, obstacles];
 
         let min_size = 8;
         let mut root = Leaf::new(0, 0, self.level.width, self.level.height, min_size, self.level.min_room_width, self.level.min_room_height);

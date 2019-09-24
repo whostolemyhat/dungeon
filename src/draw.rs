@@ -1,7 +1,8 @@
-use crate::level::{ Level };
-use crate::tile::Tile;
 use std::fs::File;
 use cairo::{ Context, Format, ImageSurface };
+
+use crate::level::{ Level };
+use crate::tile::Tile;
 
 fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64, colour: (f64, f64, f64)) {
     // context.set_source_rgb(0.258, 0.525, 0.956);
