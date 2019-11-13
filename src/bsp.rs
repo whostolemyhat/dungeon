@@ -7,6 +7,22 @@ use crate::room::{ Room };
 use crate::level::Level;
 use crate::tile::Tile;
 
+type RoomJson = Vec<Vec<Tile>>;
+
+fn load_rooms () -> std::io::Result<Vec<RoomJson>> {
+  let dir = "rooms";
+  let mut rooms = vec![];
+
+  for room in fs::read_dir(dir)? {
+    let room = room?;
+    let path = room.path();
+    let dynamic = fs::read_to_string(path)?;
+    let json: RoomJson = from_str(&dynamic)?;
+    rooms.push(json);
+  }
+
+  Ok(rooms)
+}
 
 pub struct BspLevel {
     level: Level
@@ -30,15 +46,7 @@ impl BspLevel {
     }
 
     fn place_rooms(&mut self, rng: &mut StdRng) {
-        // TODO move these
-        // TODO handle unwrap
-        let dynamic = fs::read_to_string("rooms/diamond.json").unwrap();
-        let json: Vec<Vec<Tile>> = from_str(&dynamic).unwrap();
-
-        let obstacles_json = fs::read_to_string("rooms/obstacles.json").unwrap();
-        let obstacles: Vec<Vec<Tile>> = from_str(&obstacles_json).unwrap();
-
-        let rooms = vec![json, obstacles];
+        let rooms = load_rooms().expect("No rooms!");
 
         let min_size = 8;
         let mut root = Leaf::new(0, 0, self.level.width, self.level.height, min_size, self.level.min_room_width, self.level.min_room_height);
