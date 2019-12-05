@@ -1,4 +1,4 @@
-use serde::{ Serialize, Serializer };
+use serde::{ Serialize, Serializer, Deserialize, Deserializer };
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -25,6 +25,20 @@ impl Serialize for Tile {
             Tile::Walkable => serializer.serialize_i32(1),
             Tile::Wall => serializer.serialize_i32(2)
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for Tile {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where D: Deserializer<'de> {
+      let s = i32::deserialize(deserializer)?;
+      let tile = match s {
+        0 => Tile::Empty,
+        1 => Tile::Walkable,
+        2 => Tile::Wall,
+        _ => Tile::Empty
+      };
+      Ok(tile)
     }
 }
 

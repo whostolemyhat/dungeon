@@ -1,9 +1,28 @@
 // https://gamedevelopment.tutsplus.com/tutorials/how-to-use-bsp-trees-to-generate-game-maps--gamedev-12268
 use rand::{ Rng, StdRng };
+use std::fs;
+use serde_json::from_str;
 
 use crate::room::{ Room };
 use crate::level::Level;
 use crate::tile::Tile;
+
+type RoomJson = Vec<Vec<Tile>>;
+
+fn load_rooms () -> std::io::Result<Vec<RoomJson>> {
+  let dir = "rooms";
+  let mut rooms = vec![];
+
+  for room in fs::read_dir(dir)? {
+    let room = room?;
+    let path = room.path();
+    let dynamic = fs::read_to_string(path)?;
+    let json: RoomJson = from_str(&dynamic)?;
+    rooms.push(json);
+  }
+
+  Ok(rooms)
+}
 
 pub struct BspLevel {
     level: Level
@@ -27,43 +46,44 @@ impl BspLevel {
     }
 
     fn place_rooms(&mut self, rng: &mut StdRng) {
-        let prebuilt = vec![
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Empty, Tile::Empty, Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Empty, Tile::Empty, Tile::Empty],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable]
-        ];
+        // let prebuilt = vec![
+        //     vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
+        //     vec![Tile::Empty, Tile::Empty, Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Walkable],
+        //     vec![Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Empty, Tile::Empty, Tile::Empty],
+        //     vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
+        //     vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable]
+        // ];
 
-        let another = room![
-            [0, 0, 0, 1, 0, 0, 0],
-            [0, 0, 1, 1, 1, 0, 0],
-            [0, 1, 1, 1, 1, 1, 0],
-            [1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 0, 1, 0, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 0, 1, 0, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1, 0],
-            [0, 0, 1, 1, 1, 0, 0],
-            [0, 0, 0, 1, 0, 0, 0]
-        ];
+        // let another = room![
+        //     [0, 0, 0, 1, 0, 0, 0],
+        //     [0, 0, 1, 1, 1, 0, 0],
+        //     [0, 1, 1, 1, 1, 1, 0],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [1, 1, 0, 1, 0, 1, 1],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [1, 1, 0, 1, 0, 1, 1],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [0, 1, 1, 1, 1, 1, 0],
+        //     [0, 0, 1, 1, 1, 0, 0],
+        //     [0, 0, 0, 1, 0, 0, 0]
+        // ];
 
-        let obstacles = room![
-            [1, 1, 0, 1, 0, 0, 0],
-            [0, 1, 1, 1, 1, 0, 0],
-            [0, 1, 1, 1, 1, 1, 0],
-            [1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 2, 1, 2, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 2, 1, 2, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1],
-            [0, 1, 1, 1, 1, 1, 0],
-            [0, 1, 1, 1, 1, 0, 0],
-            [1, 1, 0, 1, 1, 1, 0]
-        ];
+        // let obstacles = room![
+        //     [1, 1, 0, 1, 0, 0, 0],
+        //     [0, 1, 1, 1, 1, 0, 0],
+        //     [0, 1, 1, 1, 1, 1, 0],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [1, 1, 2, 1, 2, 1, 1],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [1, 1, 2, 1, 2, 1, 1],
+        //     [1, 1, 1, 1, 1, 1, 1],
+        //     [0, 1, 1, 1, 1, 1, 0],
+        //     [0, 1, 1, 1, 1, 0, 0],
+        //     [1, 1, 0, 1, 1, 1, 0]
+        // ];
 
-        let rooms = vec![prebuilt, another, obstacles];
+        // let rooms = vec![json];
+        let rooms = load_rooms().expect("Error opening room files");
 
         let min_size = 8;
         let mut root = Leaf::new(0, 0, self.level.width, self.level.height, min_size, self.level.min_room_width, self.level.min_room_height);
