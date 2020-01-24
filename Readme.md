@@ -8,11 +8,15 @@ Creates a randomised level, for a rogue-like or similar, using room and corridor
 
 ## Usage
 
+- `cargo run -- -h` - display all flags and options
 - `cargo run` - creates a level using a randomly generated seed
 - `cargo run -- -t blah` - uses text passed in via `-t` to create a hash which is then used as a seed
 - `cargo run -- -s e8edd254c4ffece9f4937b4f1bae4ef6aec4124f86eee0c09428afac036cef47` - uses input as seed directly
 - `cargo run -- -a bsp` - use binary space partitoning to create level, rather than random room placement.
 
+Reuse the seed to recreate the same levels; customised room layouts can be added to the `/rooms` folder to replace standard rectangle layouts. See [blog](https://www.jamesbaum.co.uk/blether/procedural-generation-prebuilt-rooms-rust-macros/) for more info.
+
+```
 All flags and options:
 
 FLAGS:
@@ -32,7 +36,7 @@ OPTIONS:
     -s, --seed <seed>                      An existing seed. Must be 32 characters
     -t, --text <text>                      A string to hash and use as a seed
     -x, --width <width>                    Width of the level [default: 48]
-
+```
 
 ## Example JSON output - rooms and corridors
 
