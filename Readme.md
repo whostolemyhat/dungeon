@@ -2,11 +2,9 @@
 
 Creates a randomised level, for a rogue-like or similar, using room and corridor placement or binary space partitioning. Uses seedable generator so results are repeatable. Levels are printed to console or as JSON.
 
-[Code from tutorial here](https://www.jamestease.co.uk/blether/procedural-level-generation-rust).
+![](img/briangrumble.png)
 
-![](manuelneuersweeperkeeper.png)
-
-![](gen.gif)
+[Explanation and code tutorial on my site here](https://www.jamesbaum.co.uk/blether/procedural-level-generation-rust/)
 
 ## Usage
 
