@@ -8,6 +8,8 @@ Creates a randomised level, for a rogue-like or similar, using room and corridor
 
 ## Usage
 
+You will need [Rust installed](https://www.rust-lang.org/tools/install), then run with Cargo as below. Alternatively, create an optimised build with `cargo build --release` then run the binary created in `target/release` with the same flags and options available.
+
 - `cargo run -- -h` - display all flags and options
 - `cargo run` - creates a level using a randomly generated seed
 - `cargo run -- -t blah` - uses text passed in via `-t` to create a hash which is then used as a seed
