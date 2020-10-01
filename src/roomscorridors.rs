@@ -1,20 +1,26 @@
-use rand::{ Rng, StdRng };
+use rand::{Rng, StdRng};
 
 use crate::level::Level;
 use crate::room::Room;
 use crate::tile::Tile;
 
 pub struct RoomsCorridors {
-    level: Level
+    level: Level,
 }
 
 impl RoomsCorridors {
-    pub fn new(width: i32, height: i32, hash: &String, rng: &mut StdRng, add_walls: bool, min_room_width: i32, min_room_height: i32) -> Level {
+    pub fn new(
+        width: i32,
+        height: i32,
+        hash: &String,
+        rng: &mut StdRng,
+        add_walls: bool,
+        min_room_width: i32,
+        min_room_height: i32,
+    ) -> Level {
         let level = Level::new(width, height, hash, min_room_width, min_room_height);
 
-        let mut map = RoomsCorridors {
-            level
-        };
+        let mut map = RoomsCorridors { level };
 
         map.place_rooms(rng);
         map.place_corridors(rng);
@@ -89,21 +95,21 @@ impl RoomsCorridors {
                 0 => {
                     match room.centre.x <= other.centre.x {
                         true => self.horz_corridor(room.centre.x, other.centre.x, room.centre.y),
-                        false => self.horz_corridor(other.centre.x, room.centre.x, room.centre.y)
+                        false => self.horz_corridor(other.centre.x, room.centre.x, room.centre.y),
                     }
                     match room.centre.y <= other.centre.y {
                         true => self.vert_corridor(room.centre.y, other.centre.y, other.centre.x),
-                        false => self.vert_corridor(other.centre.y, room.centre.y, other.centre.x)
+                        false => self.vert_corridor(other.centre.y, room.centre.y, other.centre.x),
                     }
                 }
                 _ => {
                     match room.centre.y <= other.centre.y {
                         true => self.vert_corridor(room.centre.y, other.centre.y, other.centre.x),
-                        false => self.vert_corridor(other.centre.y, room.centre.y, other.centre.x)
+                        false => self.vert_corridor(other.centre.y, room.centre.y, other.centre.x),
                     }
                     match room.centre.x <= other.centre.x {
                         true => self.horz_corridor(room.centre.x, other.centre.x, room.centre.y),
-                        false => self.horz_corridor(other.centre.x, room.centre.x, room.centre.y)
+                        false => self.horz_corridor(other.centre.x, room.centre.x, room.centre.y),
                     }
                 }
             }

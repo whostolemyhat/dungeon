@@ -1,5 +1,5 @@
-use std::fmt;
 use serde_derive::Serialize;
+use std::fmt;
 
 use crate::room::Room;
 use crate::tile::Tile;
@@ -17,7 +17,13 @@ pub struct Level {
 }
 
 impl Level {
-    pub fn new(width: i32, height: i32, hash: &String, min_room_width: i32, min_room_height: i32) -> Self {
+    pub fn new(
+        width: i32,
+        height: i32,
+        hash: &String,
+        min_room_width: i32,
+        min_room_height: i32,
+    ) -> Self {
         let mut board = Vec::new();
         for _ in 0..height {
             let row = vec![Tile::Empty; width as usize];
@@ -32,7 +38,7 @@ impl Level {
             rooms: vec![],
             hash: hash.clone(),
             min_room_width,
-            min_room_height
+            min_room_height,
         }
     }
 
@@ -74,22 +80,21 @@ impl Level {
 
                         self.add_wall(x, y + 1);
                         self.add_wall(x + 1, y + 1);
-                    },
-                    _ => ()
+                    }
+                    _ => (),
                 }
             }
         }
     }
 
     fn add_wall(&mut self, x: usize, y: usize) {
-        if x >=self.width as usize || y > self.height as usize {
+        if x >= self.width as usize || y > self.height as usize {
             return;
         }
 
         if self.board[y][x] == Tile::Empty {
             self.board[y][x] = Tile::Wall;
         }
-
     }
 
     pub fn board_to_csv(&self) -> String {

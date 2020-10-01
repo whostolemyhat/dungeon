@@ -5,7 +5,7 @@ use crate::tile::Tile;
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct Point {
     pub x: i32,
-    pub y: i32
+    pub y: i32,
 }
 
 macro_rules! room {
@@ -29,7 +29,7 @@ pub struct Room {
     pub width: i32,
     pub height: i32,
     pub centre: Point,
-    pub layout: Vec<Vec<Tile>>
+    pub layout: Vec<Vec<Tile>>,
 }
 
 impl Room {
@@ -56,9 +56,9 @@ impl Room {
             height,
             centre: Point {
                 x: x + width / 2 as i32,
-                y: y + height / 2 as i32
+                y: y + height / 2 as i32,
             },
-            layout: tiles
+            layout: tiles,
         }
     }
 
@@ -66,7 +66,6 @@ impl Room {
         self.x <= other.x2 && self.x2 >= other.x && self.y <= other.y2 && self.y2 >= other.y
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -102,11 +101,7 @@ mod tests {
 
     #[test]
     fn test_macro() {
-        let room = room![
-            [1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1]
-        ];
+        let room = room![[1, 1, 1, 1, 1], [1, 1, 1, 1, 1], [1, 1, 1, 1, 1]];
         let another = room![
             [0, 0, 0, 1, 0, 0, 0],
             [0, 0, 1, 1, 1, 0, 0],
@@ -129,32 +124,165 @@ mod tests {
             [2, 2, 2, 2, 2]
         ];
 
-        assert_eq!(room, vec![
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable]
-        ]);
+        assert_eq!(
+            room,
+            vec![
+                vec![
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable
+                ],
+                vec![
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable
+                ],
+                vec![
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable
+                ]
+            ]
+        );
 
-        assert_eq!(another, vec![
-            vec![Tile::Empty, Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Empty, Tile::Empty],
-            vec![Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Empty],
-            vec![Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable],
-            vec![Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty],
-            vec![Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Empty, Tile::Empty],
-            vec![Tile::Empty, Tile::Empty, Tile::Empty, Tile::Walkable, Tile::Empty, Tile::Empty, Tile::Empty],
-        ]);
+        assert_eq!(
+            another,
+            vec![
+                vec![
+                    Tile::Empty,
+                    Tile::Empty,
+                    Tile::Empty,
+                    Tile::Walkable,
+                    Tile::Empty,
+                    Tile::Empty,
+                    Tile::Empty
+                ],
+                vec![
+                    Tile::Empty,
+                    Tile::Empty,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Empty,
+                    Tile::Empty
+                ],
+                vec![
+                    Tile::Empty,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Empty
+                ],
+                vec![
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable
+                ],
+                vec![
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Empty,
+                    Tile::Walkable,
+                    Tile::Empty,
+                    Tile::Walkable,
+                    Tile::Walkable
+                ],
+                vec![
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable
+                ],
+                vec![
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Empty,
+                    Tile::Walkable,
+                    Tile::Empty,
+                    Tile::Walkable,
+                    Tile::Walkable
+                ],
+                vec![
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable
+                ],
+                vec![
+                    Tile::Empty,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Empty
+                ],
+                vec![
+                    Tile::Empty,
+                    Tile::Empty,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Empty,
+                    Tile::Empty
+                ],
+                vec![
+                    Tile::Empty,
+                    Tile::Empty,
+                    Tile::Empty,
+                    Tile::Walkable,
+                    Tile::Empty,
+                    Tile::Empty,
+                    Tile::Empty
+                ],
+            ]
+        );
 
-        assert_eq!(walls, vec![
-            vec![Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall],
-            vec![Tile::Wall, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Wall],
-            vec![Tile::Wall, Tile::Walkable, Tile::Empty, Tile::Walkable, Tile::Wall],
-            vec![Tile::Wall, Tile::Walkable, Tile::Walkable, Tile::Walkable, Tile::Wall],
-            vec![Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall]
-        ]);
+        assert_eq!(
+            walls,
+            vec![
+                vec![Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall],
+                vec![
+                    Tile::Wall,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Wall
+                ],
+                vec![
+                    Tile::Wall,
+                    Tile::Walkable,
+                    Tile::Empty,
+                    Tile::Walkable,
+                    Tile::Wall
+                ],
+                vec![
+                    Tile::Wall,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Walkable,
+                    Tile::Wall
+                ],
+                vec![Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall, Tile::Wall]
+            ]
+        );
     }
 }
