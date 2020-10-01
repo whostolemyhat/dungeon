@@ -9,6 +9,7 @@ pub struct RoomsCorridors {
 }
 
 impl RoomsCorridors {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(
         width: i32,
         height: i32,
