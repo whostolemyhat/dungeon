@@ -43,7 +43,7 @@ fn draw_tiles(context: &Context, board: &[Vec<Tile>], scale: f64) {
             }
         }
 
-        row = row + 1;
+        row += 1;
     }
 }
 
