@@ -118,13 +118,13 @@ impl Level {
 
 impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\n", self.hash)?;
+        writeln!(f, "{}", self.hash)?;
 
         for row in 0..self.height as usize {
             for col in 0..self.width as usize {
                 write!(f, "{} ", self.board[row][col])?
             }
-            write!(f, "\n")?
+            writeln!(f)?
         }
 
         Ok(())
