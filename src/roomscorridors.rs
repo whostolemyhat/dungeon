@@ -12,7 +12,7 @@ impl RoomsCorridors {
     pub fn new(
         width: i32,
         height: i32,
-        hash: &String,
+        hash: &str,
         rng: &mut StdRng,
         add_walls: bool,
         min_room_width: i32,

@@ -20,7 +20,7 @@ impl Level {
     pub fn new(
         width: i32,
         height: i32,
-        hash: &String,
+        hash: &str,
         min_room_width: i32,
         min_room_height: i32,
     ) -> Self {
@@ -36,7 +36,7 @@ impl Level {
             height,
             board,
             rooms: vec![],
-            hash: hash.clone(),
+            hash: hash.to_string(),
             min_room_width,
             min_room_height,
         }
