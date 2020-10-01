@@ -168,16 +168,14 @@ impl Leaf {
     }
 
     fn generate(&mut self, rng: &mut StdRng) {
-        if self.is_leaf() {
-            if self.split(rng) {
-                if let Some(ref mut left) = self.left_child {
-                    left.as_mut().generate(rng);
-                };
+        if self.is_leaf() && self.split(rng) {
+            if let Some(ref mut left) = self.left_child {
+                left.as_mut().generate(rng);
+            };
 
-                if let Some(ref mut right) = self.right_child {
-                    right.as_mut().generate(rng);
-                };
-            }
+            if let Some(ref mut right) = self.right_child {
+                right.as_mut().generate(rng);
+            };
         }
     }
 
