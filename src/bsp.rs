@@ -158,13 +158,7 @@ impl Leaf {
     }
 
     fn is_leaf(&self) -> bool {
-        match self.left_child {
-            None => match self.right_child {
-                None => true,
-                Some(_) => false,
-            },
-            Some(_) => false,
-        }
+        self.left_child.is_none() && self.right_child.is_none()
     }
 
     fn generate(&mut self, rng: &mut StdRng) {
