@@ -18,9 +18,7 @@ fn draw_tile(context: &Context, x: f64, y: f64, x2: f64, y2: f64, colour: (f64, 
 }
 
 fn draw_tiles(context: &Context, board: &[Vec<Tile>], scale: f64) {
-    let mut row = 0;
-
-    for line in board {
+    for (row, line) in board.iter().enumerate() {
         for (col, tile) in line.iter().enumerate() {
             match tile {
                 Tile::Walkable => draw_tile(
@@ -42,8 +40,6 @@ fn draw_tiles(context: &Context, board: &[Vec<Tile>], scale: f64) {
                 _ => (),
             }
         }
-
-        row += 1;
     }
 }
 
