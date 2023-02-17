@@ -1,5 +1,6 @@
 // https://gamedevelopment.tutsplus.com/tutorials/how-to-use-bsp-trees-to-generate-game-maps--gamedev-12268
-use rand::{Rng, StdRng};
+use rand::rngs::StdRng;
+use rand::Rng;
 use serde_json::from_str;
 use std::fs;
 
@@ -33,6 +34,7 @@ impl BspLevel {
         width: i32,
         height: i32,
         hash: &str,
+        // rng: &mut StdRng,
         rng: &mut StdRng,
         add_walls: bool,
         min_room_width: i32,
@@ -185,7 +187,7 @@ impl Leaf {
         //     _ => true,
         // };
 
-        let mut split_horz = !matches!(rng.gen_range(0, 2), 0);
+        let mut split_horz = !matches!(rng.gen_range(0..2), 0);
 
         if self.width > self.height && (self.width as f32 / self.height as f32) >= 1.25 {
             split_horz = false;
@@ -202,7 +204,7 @@ impl Leaf {
             return false; // too small
         }
 
-        let split_pos = rng.gen_range(self.min_size, max);
+        let split_pos = rng.gen_range(self.min_size..max);
         if split_horz {
             self.left_child = Some(Box::new(Leaf::new(
                 self.x,
@@ -261,10 +263,27 @@ impl Leaf {
         // if last level, add a room
         if self.is_leaf() {
             let room = rooms.next();
-            let width = rng.gen_range(self.min_room_width, self.width);
-            let height = rng.gen_range(self.min_room_height, self.height);
-            let x = rng.gen_range(0, self.width - width);
-            let y = rng.gen_range(0, self.height - height);
+            // can't use range with same num, eg 8..8
+            let width = if self.min_room_width == self.width {
+                self.width
+            } else {
+                rng.gen_range(self.min_room_width..self.width)
+            };
+            let height = if self.min_room_height == self.height {
+                self.height
+            } else {
+                rng.gen_range(self.min_room_height..self.height)
+            };
+            let x = if self.width == width {
+                0
+            } else {
+                rng.gen_range(0..self.width - width)
+            };
+            let y = if self.height == height {
+                0
+            } else {
+                rng.gen_range(0..self.height - height)
+            };
 
             match room {
                 Some(prebuilt) => {
@@ -321,15 +340,15 @@ fn create_corridors(rng: &mut StdRng, left: &mut Box<Leaf>, right: &mut Box<Leaf
     if let (Some(left_room), Some(right_room)) = (left.get_room(), right.get_room()) {
         // pick point in each room
         let left_point = (
-            rng.gen_range(left_room.x, left_room.x + left_room.width),
-            rng.gen_range(left_room.y, left_room.y + left_room.height),
+            rng.gen_range(left_room.x..left_room.x + left_room.width),
+            rng.gen_range(left_room.y..left_room.y + left_room.height),
         );
         let right_point = (
-            rng.gen_range(right_room.x, right_room.x + right_room.width),
-            rng.gen_range(right_room.y, right_room.y + right_room.height),
+            rng.gen_range(right_room.x..right_room.x + right_room.width),
+            rng.gen_range(right_room.y..right_room.y + right_room.height),
         );
 
-        match rng.gen_range(0, 2) {
+        match rng.gen_range(0..2) {
             0 => {
                 match left_point.0 <= right_point.0 {
                     true => left.corridors.push(horz_corridor(

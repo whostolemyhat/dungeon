@@ -1,8 +1,8 @@
-use rand::{Rng, StdRng};
-
 use crate::level::Level;
 use crate::room::Room;
 use crate::tile::Tile;
+use rand::rngs::StdRng;
+use rand::Rng;
 
 pub struct RoomsCorridors {
     level: Level,
@@ -54,10 +54,10 @@ impl RoomsCorridors {
 
         // TODO fix out of bounds
         for _ in 0..max_rooms {
-            let mut x = rng.gen_range(0, self.level.width);
-            let mut y = rng.gen_range(0, self.level.height);
-            let width = rng.gen_range(self.level.min_room_width, max_room_width);
-            let height = rng.gen_range(self.level.min_room_height, max_room_height);
+            let mut x = rng.gen_range(0..self.level.width);
+            let mut y = rng.gen_range(0..self.level.height);
+            let width = rng.gen_range(self.level.min_room_width..max_room_width);
+            let height = rng.gen_range(self.level.min_room_height..max_room_height);
 
             if x + width > self.level.width {
                 x = self.level.width - width;
@@ -91,7 +91,7 @@ impl RoomsCorridors {
             let other = self.level.rooms[i + 1].clone();
 
             // randomly pick vert or horz
-            match rng.gen_range(0, 2) {
+            match rng.gen_range(0..2) {
                 0 => {
                     match room.centre.x <= other.centre.x {
                         true => self.horz_corridor(room.centre.x, other.centre.x, room.centre.y),
