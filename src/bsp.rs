@@ -91,7 +91,13 @@ impl BspLevel {
         // ];
 
         // let rooms = vec![json];
-        let rooms = load_rooms().expect("Error opening room files");
+        let rooms = match load_rooms() {
+            Ok(rooms) => rooms,
+            Err(e) => {
+                println!("Error reading room files: {}", e);
+                vec![]
+            }
+        };
 
         let min_size = 8;
         let mut root = Leaf::new(
